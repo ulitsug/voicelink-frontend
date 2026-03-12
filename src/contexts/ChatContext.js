@@ -209,7 +209,7 @@ export function ChatProvider({ children }) {
       if (data.is_typing) {
         setTimeout(() => {
           setTypingUsers((prev) => ({ ...prev, [key]: false }));
-        }, 3000);
+        }, 4000);
       }
     };
 

@@ -449,17 +449,19 @@ export default function ChatPanel() {
         </div>
         <div className="chat-header-info">
           <span className="chat-header-name">{activeName}</span>
-          {isTyping ? (
-            <span className="typing-indicator">
-              <span className="typing-label">typing</span>
-              <span className="typing-wave">
-                <span></span><span></span><span></span>
+          {activeChat.type === 'user' ? (
+            isTyping ? (
+              <span className="chat-header-status typing">
+                typing
+                <span className="typing-wave">
+                  <span></span><span></span><span></span>
+                </span>
               </span>
-            </span>
-          ) : activeChat.type === 'user' ? (
-            <span className={`chat-header-status ${activeIsOnline ? 'online' : ''}`}>
-              {activeIsOnline ? 'Online' : 'Offline'}
-            </span>
+            ) : (
+              <span className={`chat-header-status ${activeIsOnline ? 'online' : ''}`}>
+                {activeIsOnline ? 'Online' : 'Offline'}
+              </span>
+            )
           ) : null}
         </div>
         {activeChat.type === 'user' && (() => {

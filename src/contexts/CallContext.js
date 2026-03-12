@@ -94,8 +94,8 @@ export function CallProvider({ children }) {
         if (ci) {
           callsAPI.updateLog(ci, { status: 'ended' }).catch(() => {});
         }
-        setCallError('Connection lost. Call ended.');
-        setTimeout(() => cleanup(), 2000);
+        setCallError('Connection lost. The call could not be maintained due to network issues.');
+        setTimeout(() => cleanup(), 5000);
       }
     };
     // ICE restart signaling — send ice restart offer to remote peer
@@ -190,7 +190,9 @@ export function CallProvider({ children }) {
     };
 
     const onCallRejected = () => {
-      cleanup();
+      const name = remoteUserRef.current?.display_name || remoteUserRef.current?.username || 'User';
+      setCallError(`${name} declined the call.`);
+      setTimeout(() => cleanup(), 5000);
     };
 
     const onIceCandidate = async (data) => {
@@ -206,10 +208,9 @@ export function CallProvider({ children }) {
     const onCallError = (data) => {
       console.log('[CALL] call_error event received:', data);
       setCallError(data.error);
-      // Auto-clear error and reset after delay
       setTimeout(() => {
         cleanup();
-      }, 3000);
+      }, 5000);
     };
 
     const onRenegotiateOffer = async (data) => {
@@ -306,11 +307,12 @@ export function CallProvider({ children }) {
     } catch (e) {
       console.error('Failed to initiate call:', e);
       const msg = e.name === 'NotAllowedError' ? 'Microphone/camera permission denied. Please allow access in your browser settings.'
-        : e.name === 'NotFoundError' ? 'No microphone or camera found on this device'
-        : e.name === 'NotReadableError' ? 'Media device is in use by another application'
+        : e.name === 'NotFoundError' ? 'No microphone or camera found on this device.'
+        : e.name === 'NotReadableError' ? 'Media device is in use by another application.'
+        : e.name === 'OverconstrainedError' ? 'Selected camera or microphone is not available.'
         : 'Failed to start call. Please check your device settings.';
       setCallError(msg);
-      setTimeout(() => cleanup(), 4000);
+      setTimeout(() => cleanup(), 5000);
     }
   }, [socket, wireWebRTC, cleanup, getDevicePrefs]);
 
@@ -418,6 +420,7 @@ export function CallProvider({ children }) {
     toggleMute,
     toggleVideo,
     toggleScreenShare,
+    cleanup,
   };
 
   return <CallContext.Provider value={value}>{children}</CallContext.Provider>;

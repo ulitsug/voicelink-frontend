@@ -4,6 +4,7 @@ import DeviceSettings from './DeviceSettings';
 import {
   FiPhone, FiPhoneOff, FiMic, FiMicOff, FiVideo, FiVideoOff,
   FiMonitor, FiX, FiCheck, FiWifi, FiWifiOff, FiSettings,
+  FiAlertTriangle,
 } from 'react-icons/fi';
 
 const QUALITY_ICON = { good: <FiWifi />, fair: <FiWifi />, poor: <FiWifiOff /> };
@@ -14,6 +15,7 @@ export default function CallOverlay() {
     callState, callType, remoteUser, isMuted, isVideoOn, isScreenSharing,
     callDuration, localStream, remoteStream, connectionQuality, callError,
     acceptCall, rejectCall, endCall, toggleMute, toggleVideo, toggleScreenShare,
+    cleanup,
   } = useCall();
 
   const remoteVideoRef = useRef(null);
@@ -42,7 +44,28 @@ export default function CallOverlay() {
 
   if (callState === 'idle' && !callError) return null;
 
-  const displayName = remoteUser?.display_name || remoteUser?.username || `User #${remoteUser?.id}`;
+  const displayName = remoteUser?.display_name || remoteUser?.username || 'Unknown';
+
+  // -- Error-only screen (call failed before connecting) --
+  if (callError && (callState === 'idle' || callState === 'calling')) {
+    return (
+      <div className="call-overlay error-screen">
+        <div className="call-overlay-content">
+          <div className="call-error-card">
+            <div className="call-error-icon">
+              <FiAlertTriangle size={36} />
+            </div>
+            <h3 className="call-error-title">Call Failed</h3>
+            {remoteUser && <p className="call-error-user">{displayName}</p>}
+            <p className="call-error-message">{callError}</p>
+            <button className="call-error-dismiss" onClick={() => cleanup()}>
+              Dismiss
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const formatDuration = (seconds) => {
     const m = Math.floor(seconds / 60).toString().padStart(2, '0');
@@ -59,10 +82,10 @@ export default function CallOverlay() {
       <audio ref={remoteAudioRef} autoPlay />
       <div className="call-overlay-content">
 
-        {/* Error banner */}
-        {callError && (
+        {/* Error banner (during active call) */}
+        {callError && callState === 'active' && (
           <div className="call-error-banner">
-            <FiX size={16} />
+            <FiAlertTriangle size={16} />
             <span>{callError}</span>
           </div>
         )}
