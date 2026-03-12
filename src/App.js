@@ -1,5 +1,5 @@
-import React, { lazy, Suspense } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import React, { lazy, Suspense, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { CallProvider } from './contexts/CallContext';
 import { ChatProvider } from './contexts/ChatContext';
@@ -7,6 +7,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import CallOverlay from './components/CallOverlay';
+import { InstallPrompt, OfflineIndicator } from './components/PWAComponents';
 
 /* Lazy-loaded page components */
 const HomeScreen = lazy(() => import('./components/HomeScreen'));
@@ -35,6 +36,21 @@ const PageLoader = () => <div className="page-loader">Loading...</div>;
 
 function AppRoutes() {
   const { isAuthenticated } = useAuth();
+  const navigate = useNavigate();
+
+  // Handle service worker notification clicks
+  useEffect(() => {
+    if (!('serviceWorker' in navigator)) return;
+    const handler = (event) => {
+      const { type, notificationType } = event.data || {};
+      if (type === 'NOTIFICATION_CLICK') {
+        if (notificationType === 'message') navigate('/chat');
+        else if (notificationType === 'call') navigate('/');
+      }
+    };
+    navigator.serviceWorker.addEventListener('message', handler);
+    return () => navigator.serviceWorker.removeEventListener('message', handler);
+  }, [navigate]);
 
   return (
     <>
@@ -55,6 +71,8 @@ function AppRoutes() {
         </Route>
       </Routes>
       {isAuthenticated && <CallOverlay />}
+      <InstallPrompt />
+      <OfflineIndicator />
     </>
   );
 }

@@ -34,6 +34,10 @@ React single-page application for the VoiceLink real-time communication platform
 - **Device Settings** — Camera, microphone, speaker selection + resolution presets
 - **Presence** — Real-time online/offline indicators
 - **Dashboard** — Stats overview with quick actions
+- **Admin Panel** — User management, system stats, dynamic configuration (admin role)
+- **PWA / Installable** — Service worker, offline support, home screen install prompt
+- **Push Notifications** — Web Push API for incoming calls and messages (no Firebase)
+- **Offline Indicator** — Visual banner when connectivity is lost
 
 ## Project Structure
 
@@ -44,6 +48,7 @@ frontend/src/
 ├── doodles.svg               # Decorative SVG background pattern
 ├── setupProxy.js             # CRA proxy → backend:5001
 ├── components/
+│   ├── AdminPanel.js         # Admin dashboard, user mgmt, config
 │   ├── CalendarView.js       # Calendar event CRUD & RSVP
 │   ├── CallHistory.js        # Past calls list with callback
 │   ├── CallOverlay.js        # Full-screen call UI + controls
@@ -54,11 +59,13 @@ frontend/src/
 │   ├── HomeScreen.js         # Dashboard home with stats
 │   ├── Navbar.js             # Side navigation bar
 │   ├── ProfileSettings.js    # Profile edit, avatar, password
+│   ├── PWAComponents.js      # Install prompt + offline indicator
 │   └── UsersList.js          # Browse all users
 ├── contexts/
-│   ├── AuthContext.js        # JWT auth, user session, socket init
+│   ├── AuthContext.js        # JWT auth, user session, socket init, push subscription
 │   ├── CallContext.js        # WebRTC call lifecycle management
-│   └── ChatContext.js        # Messages, conversations, typing, read receipts
+│   ├── ChatContext.js        # Messages, conversations, typing, read receipts
+│   └── DashboardContext.js   # Dashboard stats provider
 ├── pages/
 │   ├── Dashboard.js          # Main layout with tab routing
 │   ├── Login.js              # Login form
@@ -68,7 +75,8 @@ frontend/src/
     ├── socket.js             # Socket.IO client singleton
     ├── webrtc.js             # WebRTCService class (~500 lines)
     ├── encryption.js         # E2E RSA-OAEP encryption
-    └── ringtone.js           # Web Audio API ringtone generator
+    ├── ringtone.js           # Web Audio API ringtone generator
+    └── serviceWorker.js      # SW registration + push subscription mgmt
 ```
 
 ## Components
@@ -101,6 +109,20 @@ frontend/src/
 | **webrtc.js** | `WebRTCService` class. Media capture, RTCPeerConnection, offer/answer/ICE, screen share, renegotiation, ICE restart, adaptive bitrate, connection quality monitoring. |
 | **encryption.js** | RSA-OAEP key generation, export/import (JWK), encrypt/decrypt. IndexedDB key pair persistence. |
 | **ringtone.js** | Web Audio API two-tone (440/480Hz) ringtone with configurable on/off pattern. |
+| **serviceWorker.js** | Service worker registration, push subscription/unsubscription, VAPID key handling, notification permission management. |
+
+## PWA / Service Worker
+
+The app includes a custom service worker (`public/sw.js`) that provides:
+
+- **Offline support** — Pre-caches the app shell; navigation requests fall back to cached `index.html`
+- **Static asset caching** — Stale-while-revalidate for JS/CSS/images
+- **Push notifications** — Handles incoming push events for calls and messages
+- **Notification click** — Focuses the app window or opens a new one on notification click
+- **Install prompt** — `PWAComponents.js` captures `beforeinstallprompt` and shows an install banner
+- **Offline indicator** — Red top bar when the device loses connectivity
+
+The service worker skips `/api/` and `/socket.io/` paths (always network).
 
 ## Getting Started
 
@@ -140,6 +162,16 @@ npm run build
 
 Outputs to `build/`. Serve with any static file server (nginx, serve, etc.).
 
+### Network Access
+
+To access the dev server from other devices on the local network:
+
+```bash
+HOST=0.0.0.0 HTTPS=true SSL_CRT_FILE=../cert.pem SSL_KEY_FILE=../key.pem PORT=3000 npm start
+```
+
+Then open `https://<server-ip>:3000` from any device on the network.
+
 ### Environment Variables
 
 | Variable | Default | Description |
@@ -147,6 +179,9 @@ Outputs to `build/`. Serve with any static file server (nginx, serve, etc.).
 | `HTTPS` | `true` | Enable HTTPS for dev server |
 | `SSL_CRT_FILE` | `../cert.pem` | SSL certificate path |
 | `SSL_KEY_FILE` | `../key.pem` | SSL key path |
+| `HOST` | `localhost` | Bind address (`0.0.0.0` for network access) |
+| `PORT` | `3000` | Dev server port |
+| `REACT_APP_API_URL` | (proxy) | Backend API URL override (for production builds) |
 
 ## Design System
 

@@ -4334,3 +4334,149 @@ input, button, select, textarea {
   .adm-stats-grid { grid-template-columns: 1fr; }
   .adm-toolbar { flex-direction: column; gap: 8px; align-items: flex-start; }
 }
+
+/* ═══════════════════════════════════════
+   PWA — Install Banner & Offline Indicator
+   ═══════════════════════════════════════ */
+
+.pwa-install-banner {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--nav-bg, #0E2A52);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  z-index: 10000;
+  box-shadow: 0 -2px 12px rgba(0,0,0,0.25);
+  animation: slideUpBanner 0.35s ease-out;
+}
+
+@keyframes slideUpBanner {
+  from { transform: translateY(100%); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+.pwa-install-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.pwa-install-content div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.pwa-install-content strong {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.pwa-install-content span {
+  font-size: 12px;
+  opacity: 0.8;
+}
+
+.pwa-install-icon {
+  font-size: 22px;
+  color: var(--accent, #cfb000);
+  flex-shrink: 0;
+}
+
+.pwa-install-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pwa-install-btn {
+  background: var(--accent, #cfb000);
+  color: var(--nav-bg, #0E2A52);
+  border: none;
+  padding: 8px 20px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.pwa-install-btn:hover {
+  opacity: 0.9;
+}
+
+.pwa-dismiss-btn {
+  background: none;
+  border: none;
+  color: rgba(255,255,255,0.6);
+  cursor: pointer;
+  padding: 6px;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  transition: color 0.2s;
+}
+
+.pwa-dismiss-btn:hover {
+  color: #fff;
+}
+
+/* Offline indicator */
+.offline-indicator {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  background: var(--danger, #dc3545);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 6px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  z-index: 10001;
+  animation: slideDownOffline 0.3s ease-out;
+}
+
+@keyframes slideDownOffline {
+  from { transform: translateY(-100%); }
+  to   { transform: translateY(0); }
+}
+
+.offline-indicator svg {
+  font-size: 15px;
+}
+
+/* ─── PWA standalone mode adjustments ─── */
+@media (display-mode: standalone) {
+  /* Safe area padding for notched devices */
+  body {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+}
+
+@media (max-width: 480px) {
+  .pwa-install-banner {
+    flex-direction: column;
+    gap: 10px;
+    padding: 14px 16px;
+  }
+
+  .pwa-install-actions {
+    width: 100%;
+  }
+
+  .pwa-install-btn {
+    flex: 1;
+  }
+}
