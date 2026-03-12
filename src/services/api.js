@@ -47,7 +47,11 @@ export const authAPI = {
 export const contactsAPI = {
   getContacts: () => api.get('/contacts'),
   searchUsers: (query) => api.get(`/contacts/search?q=${encodeURIComponent(query)}`),
-  listAllUsers: (page = 1) => api.get(`/contacts/users?page=${page}`),
+  listAllUsers: (page = 1, search = '') => {
+    const params = new URLSearchParams({ page });
+    if (search) params.append('q', search);
+    return api.get(`/contacts/users?${params.toString()}`);
+  },
   addContact: (contactId) => api.post('/contacts', { contact_id: contactId }),
   removeContact: (contactId) => api.delete(`/contacts/${contactId}`),
   blockContact: (contactId) => api.put(`/contacts/${contactId}/block`),
@@ -92,6 +96,27 @@ export const calendarAPI = {
   updateEvent: (eventId, data) => api.put(`/calendar/events/${eventId}`, data),
   deleteEvent: (eventId) => api.delete(`/calendar/events/${eventId}`),
   respondToEvent: (eventId, status) => api.put(`/calendar/events/${eventId}/respond`, { status }),
+};
+
+// Admin
+export const adminAPI = {
+  getDashboard: () => api.get('/admin/dashboard'),
+  getSystemInfo: () => api.get('/admin/system-info'),
+  getConfig: () => api.get('/admin/config'),
+  updateConfig: (data) => api.put('/admin/config', data),
+  deleteConfig: (key) => api.delete(`/admin/config/${encodeURIComponent(key)}`),
+  getUsers: (page = 1, search = '', role = '') => {
+    const params = new URLSearchParams({ page });
+    if (search) params.append('q', search);
+    if (role) params.append('role', role);
+    return api.get(`/admin/users?${params.toString()}`);
+  },
+  getUser: (userId) => api.get(`/admin/users/${userId}`),
+  createUser: (data) => api.post('/admin/users', data),
+  updateUser: (userId, data) => api.put(`/admin/users/${userId}`, data),
+  deleteUser: (userId) => api.delete(`/admin/users/${userId}`),
+  getMessageStats: () => api.get('/admin/stats/messages'),
+  getCallStats: () => api.get('/admin/stats/calls'),
 };
 
 export default api;

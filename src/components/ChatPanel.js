@@ -1,11 +1,13 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useChat } from '../contexts/ChatContext';
+import { useDashboard } from '../contexts/DashboardContext';
 import { chatAPI } from '../services/api';
 import { useCall } from '../contexts/CallContext';
 import {
   FiSend, FiPaperclip, FiArrowLeft, FiFile, FiPhone, FiVideo,
-  FiMessageSquare, FiCheck, FiCheckCircle,
+  FiMessageSquare, FiCheck, FiCheckCircle, FiChevronUp,
+  FiX, FiDownload, FiImage,
 } from 'react-icons/fi';
 
 function formatTime(isoStr) {
@@ -34,30 +36,118 @@ function previewText(msg, userId) {
   return `${prefix}${text.length > 40 ? text.substring(0, 40) + '…' : text}`;
 }
 
-export default function ChatPanel({ contacts, onlineUsers }) {
+function formatFileSize(bytes) {
+  if (!bytes) return '';
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1048576) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / 1048576).toFixed(1)} MB`;
+}
+
+// Image lightbox modal
+function ImageLightbox({ src, fileName, onClose }) {
+  useEffect(() => {
+    const handleKey = (e) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', handleKey);
+    return () => document.removeEventListener('keydown', handleKey);
+  }, [onClose]);
+
+  return (
+    <div className="lightbox-overlay" onClick={onClose}>
+      <div className="lightbox-content" onClick={(e) => e.stopPropagation()}>
+        <div className="lightbox-toolbar">
+          <span className="lightbox-filename">{fileName || 'Image'}</span>
+          <div className="lightbox-actions">
+            <a href={src} download={fileName || 'image'} className="lightbox-btn" title="Download">
+              <FiDownload size={18} />
+            </a>
+            <button className="lightbox-btn" onClick={onClose} title="Close">
+              <FiX size={18} />
+            </button>
+          </div>
+        </div>
+        <div className="lightbox-image-wrap">
+          <img src={src} alt={fileName || 'Image'} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// File preview before sending
+function FilePreview({ file, previewUrl, caption, onCaptionChange, onSend, onCancel, uploading }) {
+  const isImage = file?.type?.startsWith('image/');
+  return (
+    <div className="file-preview-overlay" onClick={onCancel}>
+      <div className="file-preview-card" onClick={(e) => e.stopPropagation()}>
+        <div className="file-preview-header">
+          <span>{isImage ? 'Send Photo' : 'Send File'}</span>
+          <button className="lightbox-btn" onClick={onCancel}><FiX size={18} /></button>
+        </div>
+        <div className="file-preview-body">
+          {isImage && previewUrl ? (
+            <img src={previewUrl} alt={file.name} className="file-preview-image" />
+          ) : (
+            <div className="file-preview-icon">
+              <FiFile size={48} />
+              <span className="file-preview-name">{file.name}</span>
+              <span className="file-preview-size">{formatFileSize(file.size)}</span>
+            </div>
+          )}
+        </div>
+        <div className="file-preview-footer">
+          <input
+            className="file-preview-caption"
+            type="text"
+            placeholder="Add a caption..."
+            value={caption}
+            onChange={(e) => onCaptionChange(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') onSend(); }}
+            autoFocus
+          />
+          <button className="btn-send-file" onClick={onSend} disabled={uploading}>
+            {uploading ? (
+              <span className="loading-dots"><span>.</span><span>.</span><span>.</span></span>
+            ) : (
+              <FiSend size={18} />
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function ChatPanel() {
   const { user } = useAuth();
+  const { contacts, onlineUsers } = useDashboard();
   const { initiateCall } = useCall();
   const {
     messages, activeChat, unreadCounts, typingUsers, conversations,
     openChat, sendMessage, sendTyping, setActiveChat, loadConversations,
+    prependMessages,
   } = useChat();
   const [messageText, setMessageText] = useState('');
   const [uploading, setUploading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [hasMorePages, setHasMorePages] = useState(true);
+  const [lightboxImg, setLightboxImg] = useState(null);
+  const [pendingFile, setPendingFile] = useState(null);
+  const [pendingPreviewUrl, setPendingPreviewUrl] = useState(null);
+  const [fileCaption, setFileCaption] = useState('');
   const messagesEndRef = useRef(null);
   const messagesContainerRef = useRef(null);
   const fileInputRef = useRef(null);
   const typingTimeoutRef = useRef(null);
   const prevMessagesLenRef = useRef(0);
+  const shouldScrollRef = useRef(true);
 
   const chatKey = activeChat ? `${activeChat.type}_${activeChat.id}` : null;
   const chatMessages = chatKey ? messages[chatKey] || [] : [];
 
-  // Scroll to bottom only when new message is added (not on load more)
+  // Scroll to bottom when new messages arrive (not on load-more)
   useEffect(() => {
-    if (chatMessages.length > prevMessagesLenRef.current) {
+    if (chatMessages.length > prevMessagesLenRef.current && shouldScrollRef.current) {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
     prevMessagesLenRef.current = chatMessages.length;
@@ -68,7 +158,7 @@ export default function ChatPanel({ contacts, onlineUsers }) {
     setCurrentPage(1);
     setHasMorePages(true);
     prevMessagesLenRef.current = 0;
-    // Scroll to bottom on chat open
+    shouldScrollRef.current = true;
     setTimeout(() => {
       messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
     }, 100);
@@ -78,6 +168,7 @@ export default function ChatPanel({ contacts, onlineUsers }) {
     const text = messageText.trim();
     if (!text || !activeChat) return;
 
+    shouldScrollRef.current = true;
     sendMessage({
       receiver_id: activeChat.type === 'user' ? activeChat.id : undefined,
       group_id: activeChat.type === 'group' ? activeChat.id : undefined,
@@ -86,7 +177,6 @@ export default function ChatPanel({ contacts, onlineUsers }) {
     });
     setMessageText('');
 
-    // Stop typing indicator
     sendTyping(
       activeChat.type === 'user' ? activeChat.id : undefined,
       activeChat.type === 'group' ? activeChat.id : undefined,
@@ -104,7 +194,6 @@ export default function ChatPanel({ contacts, onlineUsers }) {
       handleSend();
       return;
     }
-    // Typing indicator
     if (activeChat) {
       if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
       sendTyping(
@@ -122,36 +211,58 @@ export default function ChatPanel({ contacts, onlineUsers }) {
     }
   };
 
-  const handleFileUpload = async (e) => {
+  // Stage file for preview instead of uploading immediately
+  const handleFileSelect = (e) => {
     const file = e.target.files?.[0];
     if (!file || !activeChat) return;
+    setPendingFile(file);
+    setFileCaption('');
+    if (file.type.startsWith('image/')) {
+      const url = URL.createObjectURL(file);
+      setPendingPreviewUrl(url);
+    } else {
+      setPendingPreviewUrl(null);
+    }
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
 
+  const cancelFilePreview = () => {
+    if (pendingPreviewUrl) URL.revokeObjectURL(pendingPreviewUrl);
+    setPendingFile(null);
+    setPendingPreviewUrl(null);
+    setFileCaption('');
+  };
+
+  const handleFileSend = async () => {
+    if (!pendingFile || !activeChat) return;
     setUploading(true);
     try {
       const formData = new FormData();
-      formData.append('file', file);
+      formData.append('file', pendingFile);
       const { data } = await chatAPI.uploadFile(formData);
 
+      shouldScrollRef.current = true;
       sendMessage({
         receiver_id: activeChat.type === 'user' ? activeChat.id : undefined,
         group_id: activeChat.type === 'group' ? activeChat.id : undefined,
-        content: file.name,
-        message_type: file.type.startsWith('image/') ? 'image' : 'file',
+        content: fileCaption.trim() || pendingFile.name,
+        message_type: pendingFile.type.startsWith('image/') ? 'image' : 'file',
         file_url: data.file_url,
         file_name: data.file_name,
         file_size: data.file_size,
       });
+      cancelFilePreview();
     } catch (err) {
       console.error('Upload failed:', err);
     } finally {
       setUploading(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
   const handleLoadMore = useCallback(async () => {
     if (!activeChat || loadingMore || !hasMorePages) return;
     setLoadingMore(true);
+    shouldScrollRef.current = false;
     const nextPage = currentPage + 1;
     try {
       let data;
@@ -166,24 +277,20 @@ export default function ChatPanel({ contacts, onlineUsers }) {
       if (data.messages.length === 0) {
         setHasMorePages(false);
       } else {
-        setCurrentPage(nextPage);
         const key = `${activeChat.type}_${activeChat.id}`;
-        // Prepend older messages (they come most-recent-first from API, reversed)
-        const olderMessages = data.messages;
         const container = messagesContainerRef.current;
-        const scrollH = container?.scrollHeight || 0;
-        // Add in front, deduplicating
-        const existingIds = new Set((messages[key] || []).map((m) => m.id));
-        const newMsgs = olderMessages.filter((m) => !existingIds.has(m.id));
-        if (newMsgs.length > 0) {
-          // We use functional set to prepend
-          const merged = [...newMsgs, ...(messages[key] || [])];
-          // Directly set via import won't work - use a workaround through context
-          // Actually we need to update the messages state
-          // Note: We can't call setMessages from here directly since it's in context
-          // But we CAN do it through the messages state since setMessages is exposed in context implicitly
-          // The cleanest way: import setMessages isn't exposed... let's just load via loadMessages pattern
-        }
+        const prevScrollHeight = container?.scrollHeight || 0;
+
+        prependMessages(key, data.messages);
+        setCurrentPage(nextPage);
+
+        requestAnimationFrame(() => {
+          if (container) {
+            const newScrollHeight = container.scrollHeight;
+            container.scrollTop = newScrollHeight - prevScrollHeight;
+          }
+        });
+
         if (data.page >= data.pages) {
           setHasMorePages(false);
         }
@@ -192,14 +299,13 @@ export default function ChatPanel({ contacts, onlineUsers }) {
       console.error('Failed to load more:', err);
     } finally {
       setLoadingMore(false);
+      shouldScrollRef.current = true;
     }
-  }, [activeChat, currentPage, loadingMore, hasMorePages, messages]);
+  }, [activeChat, currentPage, loadingMore, hasMorePages, prependMessages]);
 
   const getContactName = (contactId) => {
-    // First try conversations list
     const conv = conversations.find((c) => c.user.id === contactId);
     if (conv) return conv.user.display_name || conv.user.username;
-    // Fallback to contacts
     const contact = contacts.find((c) => c.contact_id === contactId);
     return contact?.contact?.display_name || `User ${contactId}`;
   };
@@ -211,7 +317,6 @@ export default function ChatPanel({ contacts, onlineUsers }) {
 
   const isTyping = chatKey && typingUsers[chatKey];
 
-  // Build ordered chat list from conversations + contacts who aren't yet in conversations
   const conversationUserIds = new Set(conversations.map((c) => c.user.id));
   const contactsWithoutConversation = contacts.filter(
     (c) => !conversationUserIds.has(c.contact_id)
@@ -258,7 +363,7 @@ export default function ChatPanel({ contacts, onlineUsers }) {
                       <div className="chat-list-bottom">
                         <span className="chat-preview">
                           {typing ? (
-                            <em className="typing-text">typing...</em>
+                            <em className="typing-text">typing<span className="typing-dots"><span>.</span><span>.</span><span>.</span></span></em>
                           ) : (
                             previewText(conv.last_message, user?.id)
                           )}
@@ -330,7 +435,7 @@ export default function ChatPanel({ contacts, onlineUsers }) {
     <div className="chat-panel active-chat">
       <div className="chat-header">
         <button className="btn-back" onClick={() => { setActiveChat(null); loadConversations(); }}>
-          <FiArrowLeft size={20} />
+          <FiArrowLeft size={18} />
         </button>
         <div className="chat-header-avatar">
           {activeAvatarUrl ? (
@@ -345,9 +450,16 @@ export default function ChatPanel({ contacts, onlineUsers }) {
         <div className="chat-header-info">
           <span className="chat-header-name">{activeName}</span>
           {isTyping ? (
-            <span className="typing-indicator">typing...</span>
+            <span className="typing-indicator">
+              <span className="typing-label">typing</span>
+              <span className="typing-wave">
+                <span></span><span></span><span></span>
+              </span>
+            </span>
           ) : activeChat.type === 'user' ? (
-            <span className="chat-header-status">{activeIsOnline ? 'Online' : 'Offline'}</span>
+            <span className={`chat-header-status ${activeIsOnline ? 'online' : ''}`}>
+              {activeIsOnline ? 'Online' : 'Offline'}
+            </span>
           ) : null}
         </div>
         {activeChat.type === 'user' && (() => {
@@ -360,14 +472,14 @@ export default function ChatPanel({ contacts, onlineUsers }) {
                 onClick={() => initiateCall(targetUser, 'voice')}
                 title="Voice Call"
               >
-                <FiPhone size={18} />
+                <FiPhone size={16} />
               </button>
               <button
                 className="btn-action video"
                 onClick={() => initiateCall(targetUser, 'video')}
                 title="Video Call"
               >
-                <FiVideo size={18} />
+                <FiVideo size={16} />
               </button>
             </div>
           );
@@ -375,6 +487,22 @@ export default function ChatPanel({ contacts, onlineUsers }) {
       </div>
 
       <div className="messages-container" ref={messagesContainerRef}>
+        {hasMorePages && chatMessages.length >= 50 && (
+          <div className="load-more-area">
+            <button
+              className="btn-load-more"
+              onClick={handleLoadMore}
+              disabled={loadingMore}
+            >
+              {loadingMore ? (
+                <span className="loading-dots"><span>.</span><span>.</span><span>.</span></span>
+              ) : (
+                <><FiChevronUp size={14} /> Load older messages</>
+              )}
+            </button>
+          </div>
+        )}
+
         {chatMessages.length === 0 ? (
           <div className="chat-empty-messages">
             <FiMessageSquare size={36} />
@@ -384,7 +512,6 @@ export default function ChatPanel({ contacts, onlineUsers }) {
         ) : (
           chatMessages.map((msg, idx) => {
             const isSent = msg.sender_id === user?.id;
-            // Date separator
             const msgDate = new Date(msg.created_at).toLocaleDateString();
             const prevDate = idx > 0
               ? new Date(chatMessages[idx - 1].created_at).toLocaleDateString()
@@ -403,16 +530,26 @@ export default function ChatPanel({ contacts, onlineUsers }) {
                     <span className="message-sender">{msg.sender.display_name}</span>
                   )}
                   {msg.message_type === 'image' && msg.file_url && (
-                    <img src={msg.file_url} alt={msg.file_name || 'Image'} className="message-image" />
+                    <div
+                      className="message-image-thumb"
+                      onClick={() => setLightboxImg({ src: msg.file_url, name: msg.file_name })}
+                    >
+                      <img src={msg.file_url} alt={msg.file_name || 'Image'} />
+                      <div className="image-thumb-overlay"><FiImage size={14} /></div>
+                    </div>
                   )}
                   {msg.message_type === 'file' && msg.file_url && (
                     <a href={msg.file_url} className="message-file" download={msg.file_name} target="_blank" rel="noopener noreferrer">
                       <FiFile size={16} />
-                      <span>{msg.file_name}</span>
-                      <span className="file-size">
-                        {msg.file_size ? `${(msg.file_size / 1024).toFixed(1)} KB` : ''}
-                      </span>
+                      <div className="file-info-text">
+                        <span className="file-name-text">{msg.file_name}</span>
+                        <span className="file-size">{formatFileSize(msg.file_size)}</span>
+                      </div>
+                      <FiDownload size={14} className="file-dl-icon" />
                     </a>
+                  )}
+                  {msg.message_type === 'image' && msg.content && msg.content !== msg.file_name && (
+                    <p className="message-text message-caption">{msg.content}</p>
                   )}
                   {msg.message_type === 'text' && msg.content && (
                     <p className="message-text">{msg.content}</p>
@@ -432,6 +569,14 @@ export default function ChatPanel({ contacts, onlineUsers }) {
             );
           })
         )}
+
+        {isTyping && (
+          <div className="message received typing-bubble">
+            <div className="typing-dots-bubble">
+              <span></span><span></span><span></span>
+            </div>
+          </div>
+        )}
         <div ref={messagesEndRef} />
       </div>
 
@@ -440,7 +585,7 @@ export default function ChatPanel({ contacts, onlineUsers }) {
           type="file"
           ref={fileInputRef}
           hidden
-          onChange={handleFileUpload}
+          onChange={handleFileSelect}
         />
         <button
           className="btn-attach"
@@ -448,7 +593,7 @@ export default function ChatPanel({ contacts, onlineUsers }) {
           disabled={uploading}
           title="Attach file"
         >
-          <FiPaperclip size={20} />
+          <FiPaperclip size={18} />
         </button>
         <textarea
           className="chat-input"
@@ -464,9 +609,31 @@ export default function ChatPanel({ contacts, onlineUsers }) {
           disabled={!messageText.trim() || uploading}
           title="Send"
         >
-          <FiSend size={20} />
+          <FiSend size={18} />
         </button>
       </div>
+
+      {/* File preview before sending */}
+      {pendingFile && (
+        <FilePreview
+          file={pendingFile}
+          previewUrl={pendingPreviewUrl}
+          caption={fileCaption}
+          onCaptionChange={setFileCaption}
+          onSend={handleFileSend}
+          onCancel={cancelFilePreview}
+          uploading={uploading}
+        />
+      )}
+
+      {/* Image lightbox */}
+      {lightboxImg && (
+        <ImageLightbox
+          src={lightboxImg.src}
+          fileName={lightboxImg.name}
+          onClose={() => setLightboxImg(null)}
+        />
+      )}
     </div>
   );
 }

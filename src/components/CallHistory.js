@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useCall } from '../contexts/CallContext';
+import { useDashboard } from '../contexts/DashboardContext';
 import { callsAPI } from '../services/api';
 import {
   FiPhone, FiVideo, FiPhoneIncoming, FiPhoneOutgoing, FiPhoneMissed, FiClock,
 } from 'react-icons/fi';
 
-export default function CallHistory({ onlineUsers = [] }) {
+export default function CallHistory() {
+  const { onlineUsers } = useDashboard();
   const { user } = useAuth();
   const { initiateCall } = useCall();
   const [calls, setCalls] = useState([]);

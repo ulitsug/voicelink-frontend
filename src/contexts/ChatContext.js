@@ -1,8 +1,41 @@
-import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { useAuth } from './AuthContext';
 import { chatAPI } from '../services/api';
 
 const ChatContext = createContext(null);
+
+// Notification sound — two-tone chime via Web Audio API
+let audioCtx = null;
+function playNotificationSound() {
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    const t = audioCtx.currentTime;
+
+    // First tone (E5 = 659 Hz)
+    const osc1 = audioCtx.createOscillator();
+    const g1 = audioCtx.createGain();
+    osc1.connect(g1); g1.connect(audioCtx.destination);
+    osc1.frequency.value = 659;
+    osc1.type = 'sine';
+    g1.gain.setValueAtTime(0.18, t);
+    g1.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
+    osc1.start(t);
+    osc1.stop(t + 0.25);
+
+    // Second tone (A5 = 880 Hz), slight delay
+    const osc2 = audioCtx.createOscillator();
+    const g2 = audioCtx.createGain();
+    osc2.connect(g2); g2.connect(audioCtx.destination);
+    osc2.frequency.value = 880;
+    osc2.type = 'sine';
+    g2.gain.setValueAtTime(0.001, t);
+    g2.gain.setValueAtTime(0.18, t + 0.15);
+    g2.gain.exponentialRampToValueAtTime(0.001, t + 0.45);
+    osc2.start(t + 0.15);
+    osc2.stop(t + 0.45);
+  } catch (_) { /* ignore audio errors */ }
+}
 
 export function ChatProvider({ children }) {
   const { socket, user } = useAuth();
@@ -44,11 +77,21 @@ export function ChatProvider({ children }) {
   const addMessage = useCallback((chatKey, message) => {
     setMessages((prev) => {
       const existing = prev[chatKey] || [];
-      // Prevent duplicate via message id
       if (message.id && existing.some((m) => m.id === message.id)) {
         return prev;
       }
       return { ...prev, [chatKey]: [...existing, message] };
+    });
+  }, []);
+
+  // Helper: prepend older messages (for pagination)
+  const prependMessages = useCallback((chatKey, olderMessages) => {
+    setMessages((prev) => {
+      const existing = prev[chatKey] || [];
+      const existingIds = new Set(existing.map((m) => m.id));
+      const newMsgs = olderMessages.filter((m) => !existingIds.has(m.id));
+      if (newMsgs.length === 0) return prev;
+      return { ...prev, [chatKey]: [...newMsgs, ...existing] };
     });
   }, []);
 
@@ -103,11 +146,12 @@ export function ChatProvider({ children }) {
           socket.emit('mark_read', { sender_id: message.sender_id });
         }
       } else {
-        // Increment unread
+        // Increment unread & play notification sound
         setUnreadCounts((prev) => ({
           ...prev,
           [chatKey]: (prev[chatKey] || 0) + 1,
         }));
+        playNotificationSound();
       }
     };
 
@@ -120,7 +164,6 @@ export function ChatProvider({ children }) {
 
       // Update conversation list for DMs
       if (!message.group_id) {
-        // We need receiver info — look it up from existing conversations
         setConversations((prev) => {
           const other = prev.find((c) => c.user.id === message.receiver_id);
           if (other) {
@@ -137,8 +180,6 @@ export function ChatProvider({ children }) {
               },
             }, ...rest];
           }
-          // The conversation might not exist yet if this is the first message
-          // In that case, we'll need the receiver's profile from the message sender
           if (message.receiver) {
             return [{
               user: message.receiver,
@@ -173,7 +214,6 @@ export function ChatProvider({ children }) {
     };
 
     const handleMessagesRead = (data) => {
-      // The reader (data.reader_id) has read our messages
       const chatKey = `user_${data.reader_id}`;
       setMessages((prev) => {
         const msgs = prev[chatKey];
@@ -185,6 +225,14 @@ export function ChatProvider({ children }) {
           ),
         };
       });
+      // Also update conversation last_message read status
+      setConversations((prev) =>
+        prev.map((c) =>
+          c.user.id === data.reader_id && c.last_message?.sender_id !== data.reader_id
+            ? { ...c, last_message: { ...c.last_message, is_read: true } }
+            : c
+        )
+      );
     };
 
     socket.on('new_message', handleNewMessage);
@@ -230,8 +278,11 @@ export function ChatProvider({ children }) {
           )
         );
       }
+
+      return data;
     } catch (e) {
       console.error('Failed to load messages:', e);
+      return null;
     }
   }, [socket]);
 
@@ -256,14 +307,21 @@ export function ChatProvider({ children }) {
     loadMessages(type, id);
   }, [loadMessages]);
 
+  // Compute total unread count across all chats
+  const totalUnread = useMemo(() => {
+    return Object.values(unreadCounts).reduce((sum, c) => sum + (c || 0), 0);
+  }, [unreadCounts]);
+
   const value = {
     messages,
     activeChat,
     unreadCounts,
+    totalUnread,
     typingUsers,
     conversations,
     loadMessages,
     loadConversations,
+    prependMessages,
     sendMessage,
     sendTyping,
     openChat,

@@ -2,12 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { groupsAPI, contactsAPI } from '../services/api';
 import { useChat } from '../contexts/ChatContext';
 import { useCall } from '../contexts/CallContext';
+import { useDashboard } from '../contexts/DashboardContext';
 import {
   FiPlus, FiUsers, FiEdit2, FiTrash2, FiUserPlus, FiUserMinus,
   FiMessageSquare, FiPhone, FiVideo, FiX, FiSearch,
 } from 'react-icons/fi';
 
-export default function GroupManager({ contacts }) {
+export default function GroupManager() {
+  const { contacts } = useDashboard();
   const { openChat } = useChat();
   const { initiateCall } = useCall();
   const [groups, setGroups] = useState([]);

@@ -1,12 +1,16 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useCall } from '../contexts/CallContext';
 import { useChat } from '../contexts/ChatContext';
+import { useDashboard } from '../contexts/DashboardContext';
 import { contactsAPI } from '../services/api';
 import {
   FiPhone, FiVideo, FiMessageSquare, FiSearch, FiUserPlus, FiUserX, FiX, FiUsers,
 } from 'react-icons/fi';
 
-export default function ContactList({ contacts, onlineUsers, onRefresh, onNavigate }) {
+export default function ContactList() {
+  const { contacts, onlineUsers, loadContacts: onRefresh } = useDashboard();
+  const navigate = useNavigate();
   const { initiateCall } = useCall();
   const { openChat } = useChat();
   const [searchQuery, setSearchQuery] = useState('');
@@ -112,7 +116,7 @@ export default function ContactList({ contacts, onlineUsers, onRefresh, onNaviga
               <div className="contact-actions">
                 <button
                   className="btn-action"
-                  onClick={() => { openChat('user', contact.contact_id); if (onNavigate) onNavigate('chat'); }}
+                  onClick={() => { openChat('user', contact.contact_id); navigate('/chat'); }}
                   title="Chat"
                 >
                   <FiMessageSquare size={16} />
