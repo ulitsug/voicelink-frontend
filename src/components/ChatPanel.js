@@ -141,6 +141,7 @@ export default function ChatPanel() {
   const [deleting, setDeleting] = useState(false);  const messagesEndRef = useRef(null);
   const messagesContainerRef = useRef(null);
   const fileInputRef = useRef(null);
+  const chatInputRef = useRef(null);
   const typingTimeoutRef = useRef(null);
   const prevMessagesLenRef = useRef(0);
   const shouldScrollRef = useRef(true);
@@ -166,6 +167,7 @@ export default function ChatPanel() {
     setSelectedMessages(new Set());
     setTimeout(() => {
       messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
+      chatInputRef.current?.focus();
     }, 100);
   }, [chatKey]);
 
@@ -750,6 +752,7 @@ export default function ChatPanel() {
           <FiPaperclip size={18} />
         </button>
         <textarea
+          ref={chatInputRef}
           className="chat-input"
           placeholder="Type a message..."
           value={messageText}
