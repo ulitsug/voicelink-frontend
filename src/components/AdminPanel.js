@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { Outlet } from 'react-router-dom';
 import { adminAPI } from '../services/api';
 import {
   FiUsers, FiSettings, FiServer, FiActivity, FiSearch,
@@ -8,42 +9,18 @@ import {
   FiSend, FiKey,
 } from 'react-icons/fi';
 
-const ADMIN_TABS = [
-  { id: 'overview', label: 'Overview', icon: FiActivity },
-  { id: 'users', label: 'Users', icon: FiUsers },
-  { id: 'system', label: 'System Info', icon: FiServer },
-  { id: 'config', label: 'Configuration', icon: FiSettings },
-];
-
 export default function AdminPanel() {
-  const [activeTab, setActiveTab] = useState('overview');
-
   return (
     <div className="adm-container">
-      <div className="adm-sidebar">
-        {ADMIN_TABS.map(tab => (
-          <button
-            key={tab.id}
-            className={`adm-tab ${activeTab === tab.id ? 'active' : ''}`}
-            onClick={() => setActiveTab(tab.id)}
-          >
-            <tab.icon size={16} />
-            <span>{tab.label}</span>
-          </button>
-        ))}
-      </div>
-      <div className="adm-content">
-        {activeTab === 'overview' && <AdminOverview />}
-        {activeTab === 'users' && <AdminUsers />}
-        {activeTab === 'system' && <AdminSystemInfo />}
-        {activeTab === 'config' && <AdminConfig />}
+      <div className="adm-content adm-content-full">
+        <Outlet />
       </div>
     </div>
   );
 }
 
 /* ── Overview Tab ──────────────────────────────────────────── */
-function AdminOverview() {
+export function AdminOverview() {
   const [stats, setStats] = useState(null);
   const [msgStats, setMsgStats] = useState(null);
   const [callStats, setCallStats] = useState(null);
@@ -125,7 +102,7 @@ function AdminOverview() {
 }
 
 /* ── Users Tab ─────────────────────────────────────────────── */
-function AdminUsers() {
+export function AdminUsers() {
   const [users, setUsers] = useState([]);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -510,7 +487,7 @@ function UserFormModal({ user, onClose, onSaved }) {
 }
 
 /* ── System Info Tab ───────────────────────────────────────── */
-function AdminSystemInfo() {
+export function AdminSystemInfo() {
   const [info, setInfo] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -596,7 +573,7 @@ function AdminSystemInfo() {
 }
 
 /* ── Config Tab ────────────────────────────────────────────── */
-function AdminConfig() {
+export function AdminConfig() {
   const [configs, setConfigs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [newKey, setNewKey] = useState('');

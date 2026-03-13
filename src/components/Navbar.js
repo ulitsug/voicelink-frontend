@@ -2,16 +2,24 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import {
   FiHome, FiUsers, FiMessageSquare, FiPhone, FiCalendar, FiClock, FiGlobe, FiSettings,
-  FiMenu, FiX,
+  FiMenu, FiX, FiChevronDown, FiActivity, FiServer,
 } from 'react-icons/fi';
 import { useChat } from '../contexts/ChatContext';
 
 // Primary tabs shown in mobile bottom nav
 const PRIMARY_PATHS = new Set(['/', '/contacts', '/chat', '/history']);
 
+const ADMIN_SUBTABS = [
+  { to: '/admin', label: 'Overview', icon: FiActivity, end: true },
+  { to: '/admin/users', label: 'Users', icon: FiUsers },
+  { to: '/admin/system', label: 'System Info', icon: FiServer },
+  { to: '/admin/config', label: 'Configuration', icon: FiSettings },
+];
+
 export default function Navbar({ userRole }) {
   const { totalUnread } = useChat();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [adminOpen, setAdminOpen] = useState(false);
   const location = useLocation();
   const isAdmin = userRole === 'admin' || userRole === 'super_admin';
 
@@ -23,11 +31,17 @@ export default function Navbar({ userRole }) {
     { to: '/groups', label: 'Groups', icon: FiUsers },
     { to: '/calendar', label: 'Calendar', icon: FiCalendar },
     { to: '/history', label: 'History', icon: FiClock },
-    ...(isAdmin ? [{ to: '/admin', label: 'Admin', icon: FiSettings }] : []),
   ];
 
   const primaryTabs = tabs.filter((t) => PRIMARY_PATHS.has(t.to));
   const secondaryTabs = tabs.filter((t) => !PRIMARY_PATHS.has(t.to));
+
+  // Auto-expand admin submenu when on admin routes
+  useEffect(() => {
+    if (location.pathname.startsWith('/admin')) {
+      setAdminOpen(true);
+    }
+  }, [location.pathname]);
 
   // Close sidebar on route change
   useEffect(() => {
@@ -35,6 +49,39 @@ export default function Navbar({ userRole }) {
   }, [location.pathname]);
 
   const closeSidebar = useCallback(() => setSidebarOpen(false), []);
+
+  const renderAdminSubmenu = (inMobile = false) => {
+    if (!isAdmin) return null;
+    const tabClass = inMobile ? 'mobile-sidebar-tab' : 'nav-tab';
+    return (
+      <div className="nav-submenu-group">
+        <button
+          className={`${tabClass} nav-submenu-toggle ${location.pathname.startsWith('/admin') ? 'active' : ''}`}
+          onClick={() => setAdminOpen((v) => !v)}
+        >
+          <FiSettings size={inMobile ? 18 : 17} />
+          <span>Admin</span>
+          <FiChevronDown size={14} className={`nav-submenu-chevron ${adminOpen ? 'open' : ''}`} />
+        </button>
+        {adminOpen && (
+          <div className="nav-submenu-items">
+            {ADMIN_SUBTABS.map((sub) => (
+              <NavLink
+                key={sub.to}
+                to={sub.to}
+                end={sub.end}
+                className={({ isActive }) => `${tabClass} nav-submenu-item ${isActive ? 'active' : ''}`}
+                onClick={inMobile ? closeSidebar : undefined}
+              >
+                <sub.icon size={inMobile ? 16 : 15} />
+                <span>{sub.label}</span>
+              </NavLink>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <>
@@ -58,6 +105,7 @@ export default function Navbar({ userRole }) {
               {tab.badge > 0 && <span className="nav-badge">{tab.badge > 99 ? '99+' : tab.badge}</span>}
             </NavLink>
           ))}
+          {renderAdminSubmenu(false)}
         </div>
 
         {/* Mobile: show only primary tabs + menu button */}
@@ -109,6 +157,7 @@ export default function Navbar({ userRole }) {
                   {tab.badge > 0 && <span className="nav-badge">{tab.badge > 99 ? '99+' : tab.badge}</span>}
                 </NavLink>
               ))}
+              {renderAdminSubmenu(true)}
             </div>
           </div>
         </div>

@@ -24,6 +24,10 @@ const CalendarView = lazy(() => import('./components/CalendarView'));
 const CallHistory = lazy(() => import('./components/CallHistory'));
 const ProfileSettings = lazy(() => import('./components/ProfileSettings'));
 const AdminPanel = lazy(() => import('./components/AdminPanel'));
+const AdminOverview = lazy(() => import('./components/AdminPanel').then(m => ({ default: m.AdminOverview })));
+const AdminUsers = lazy(() => import('./components/AdminPanel').then(m => ({ default: m.AdminUsers })));
+const AdminSystemInfo = lazy(() => import('./components/AdminPanel').then(m => ({ default: m.AdminSystemInfo })));
+const AdminConfig = lazy(() => import('./components/AdminPanel').then(m => ({ default: m.AdminConfig })));
 
 function ProtectedRoute({ children }) {
   const { isAuthenticated, loading } = useAuth();
@@ -76,7 +80,12 @@ function AppRoutes() {
           <Route path="calendar" element={<Suspense fallback={<PageLoader />}><CalendarView /></Suspense>} />
           <Route path="history" element={<Suspense fallback={<PageLoader />}><CallHistory /></Suspense>} />
           <Route path="profile" element={<Suspense fallback={<PageLoader />}><ProfileSettings /></Suspense>} />
-          <Route path="admin" element={<Suspense fallback={<PageLoader />}><AdminPanel /></Suspense>} />
+          <Route path="admin" element={<Suspense fallback={<PageLoader />}><AdminPanel /></Suspense>}>
+            <Route index element={<Suspense fallback={<PageLoader />}><AdminOverview /></Suspense>} />
+            <Route path="users" element={<Suspense fallback={<PageLoader />}><AdminUsers /></Suspense>} />
+            <Route path="system" element={<Suspense fallback={<PageLoader />}><AdminSystemInfo /></Suspense>} />
+            <Route path="config" element={<Suspense fallback={<PageLoader />}><AdminConfig /></Suspense>} />
+          </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>

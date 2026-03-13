@@ -78,6 +78,8 @@ export const chatAPI = {
   }),
   getUnreadCounts: () => api.get('/chat/unread'),
   getConversations: () => api.get('/chat/conversations'),
+  deleteMessage: (messageId) => api.delete(`/chat/messages/${messageId}`),
+  deleteConversation: (userId) => api.delete(`/chat/conversations/${userId}`),
 };
 
 // Groups

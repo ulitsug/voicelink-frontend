@@ -314,6 +314,27 @@ const SECTIONS = [
           { status: 200, description: 'Conversations list', example: '{"conversations":[{"user":{...},"last_message":{...},"unread_count":2}]}' },
         ],
       },
+      {
+        method: 'DELETE', path: '/api/chat/messages/:message_id', auth: 'jwt',
+        summary: 'Delete a message',
+        description: 'Permanently delete a specific message. Only the sender of the message can delete it. Associated uploaded files are also removed.',
+        params: { message_id: { type: 'integer', in: 'path', description: 'Message ID to delete' } },
+        responses: [
+          { status: 200, description: 'Message deleted', example: '{"success":true,"message_id":42,"receiver_id":3,"group_id":null}' },
+          { status: 403, description: 'Not the sender of this message' },
+          { status: 404, description: 'Message not found' },
+        ],
+      },
+      {
+        method: 'DELETE', path: '/api/chat/conversations/:other_user_id', auth: 'jwt',
+        summary: 'Delete an entire conversation',
+        description: 'Permanently delete all messages between the authenticated user and the specified user. Removes associated uploaded files.',
+        params: { other_user_id: { type: 'integer', in: 'path', description: 'Other user ID' } },
+        responses: [
+          { status: 200, description: 'Conversation deleted', example: '{"success":true,"other_user_id":3,"deleted_count":15}' },
+          { status: 404, description: 'No conversation found' },
+        ],
+      },
     ],
   },
 
@@ -877,6 +898,28 @@ const SOCKET_EVENTS = [
         name: 'leave_group_room', direction: 'emit',
         summary: 'Leave a group chat room',
         payload: { group_id: 'integer' },
+      },
+      {
+        name: 'delete_message', direction: 'emit',
+        summary: 'Delete a message in real-time',
+        payload: { message_id: 'integer' },
+        response: 'message_deleted → to receiver/group members and back to sender',
+      },
+      {
+        name: 'message_deleted', direction: 'listen',
+        summary: 'A message was deleted',
+        payload: { message_id: 'integer', sender_id: 'integer' },
+      },
+      {
+        name: 'delete_conversation', direction: 'emit',
+        summary: 'Delete an entire conversation',
+        payload: { other_user_id: 'integer' },
+        response: 'conversation_deleted → to the other user and back to sender',
+      },
+      {
+        name: 'conversation_deleted', direction: 'listen',
+        summary: 'A conversation was deleted',
+        payload: { other_user_id: 'integer', deleted_by: 'integer' },
       },
     ],
   },

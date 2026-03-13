@@ -499,6 +499,11 @@ body {
   overflow: hidden;
 }
 
+/* When admin panel is active, fill the full width */
+.dashboard-content:has(.adm-container) {
+  padding: 16px;
+}
+
 .dashboard-content > * {
   animation: fadeInUp 0.25s ease-out;
 }
@@ -1459,6 +1464,59 @@ body {
   100% { transform: scale(1); }
 }
 
+/* ---- Admin Submenu in Navbar ---- */
+.nav-submenu-group {
+  display: flex;
+  flex-direction: column;
+}
+.nav-submenu-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: inherit;
+  font-family: inherit;
+  text-align: left;
+}
+.nav-submenu-chevron {
+  margin-left: auto;
+  transition: transform 0.2s ease;
+  opacity: 0.6;
+  flex-shrink: 0;
+}
+.nav-submenu-chevron.open {
+  transform: rotate(180deg);
+}
+.nav-submenu-items {
+  display: flex;
+  flex-direction: column;
+}
+.nav-submenu-items .nav-submenu-item {
+  padding-left: 36px !important;
+  font-size: 12px;
+}
+.nav-submenu-items .nav-submenu-item span {
+  font-size: 12px;
+}
+/* Mobile sidebar submenu */
+.mobile-sidebar-tabs .nav-submenu-group .nav-submenu-toggle {
+  padding: 12px 20px;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+.mobile-sidebar-tabs .nav-submenu-group .nav-submenu-toggle.active,
+.mobile-sidebar-tabs .nav-submenu-group .nav-submenu-toggle:hover {
+  color: var(--primary);
+  background: var(--primary-light);
+}
+.mobile-sidebar-tabs .nav-submenu-items .nav-submenu-item {
+  padding-left: 48px !important;
+  font-size: 13px;
+}
+
 /* ---- Chat Header (compact) ---- */
 .chat-header {
   display: flex;
@@ -1853,6 +1911,186 @@ body {
 .btn-send { color: var(--primary); }
 .btn-send:hover { background: var(--primary-light); }
 .btn-send:disabled { opacity: 0.3; cursor: not-allowed; }
+
+/* ---- Chat Delete Controls ---- */
+.btn-delete-conv {
+  background: none;
+  border: none;
+  color: var(--text-light);
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.15s, color 0.15s, background 0.15s;
+  flex-shrink: 0;
+}
+.chat-list-item:hover .btn-delete-conv { opacity: 1; }
+.btn-delete-conv:hover { color: #d43b25; background: rgba(212, 59, 37, 0.08); }
+
+@media (hover: none) {
+  .btn-delete-conv { opacity: 0.6; }
+}
+
+/* Select mode header */
+.select-mode-header {
+  background: var(--primary-light) !important;
+}
+
+/* Message delete button on hover */
+.message {
+  position: relative;
+}
+.msg-delete-btn {
+  position: absolute;
+  top: 4px;
+  right: -28px;
+  background: rgba(0,0,0,0.06);
+  border: none;
+  color: var(--text-light);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.15s, color 0.15s, background 0.15s;
+}
+.message.sent .msg-delete-btn {
+  right: auto;
+  left: -28px;
+}
+.message:hover .msg-delete-btn { opacity: 1; }
+.msg-delete-btn:hover { color: #d43b25; background: rgba(212, 59, 37, 0.12); }
+
+@media (hover: none) {
+  .msg-delete-btn { display: none; }
+}
+
+/* Select mode checkbox on message */
+.msg-select-check {
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(255,255,255,0.5);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-right: 6px;
+  margin-bottom: 2px;
+  transition: background 0.15s, border-color 0.15s;
+}
+.message.received .msg-select-check {
+  border-color: var(--border);
+}
+.msg-select-check.checked {
+  background: #d43b25;
+  border-color: #d43b25;
+  color: white;
+}
+.message.select-mode {
+  cursor: pointer;
+  user-select: none;
+}
+.message.select-mode.sent {
+  display: flex;
+  align-items: flex-start;
+  flex-direction: row-reverse;
+  gap: 4px;
+}
+.message.selected {
+  outline: 2px solid rgba(212, 59, 37, 0.4);
+  outline-offset: 2px;
+}
+
+/* Header delete button */
+.chat-header .btn-action.delete {
+  color: var(--text-light);
+}
+.chat-header .btn-action.delete:hover {
+  background: rgba(212, 59, 37, 0.1);
+  color: #d43b25;
+}
+
+/* Delete confirmation dialog */
+.delete-confirm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9998;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn 0.15s ease;
+  padding: 16px;
+}
+.delete-confirm-dialog {
+  background: white;
+  border-radius: 16px;
+  padding: 24px;
+  max-width: 360px;
+  width: 100%;
+  text-align: center;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.2);
+  animation: modalSlideUp 0.2s ease;
+}
+@keyframes modalSlideUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.delete-confirm-icon {
+  color: #d43b25;
+  margin-bottom: 12px;
+}
+.delete-confirm-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0 0 8px;
+}
+.delete-confirm-text {
+  font-size: 13px;
+  color: var(--text-light);
+  line-height: 1.5;
+  margin: 0 0 20px;
+}
+.delete-confirm-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+.delete-confirm-actions .btn-cancel {
+  padding: 8px 20px;
+  border: 1px solid var(--border);
+  background: white;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.delete-confirm-actions .btn-cancel:hover { background: var(--bg-secondary); }
+.delete-confirm-actions .btn-confirm-delete {
+  padding: 8px 20px;
+  border: none;
+  background: #d43b25;
+  color: white;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: background 0.15s;
+}
+.delete-confirm-actions .btn-confirm-delete:hover { background: #b52d1a; }
+.delete-confirm-actions .btn-confirm-delete:disabled { opacity: 0.6; cursor: not-allowed; }
 
 /* ---- Image Lightbox ---- */
 .lightbox-overlay {
@@ -3984,29 +4222,12 @@ input, button, select, textarea {
   gap: 0;
   min-height: calc(100vh - 120px);
 }
-.adm-sidebar {
-  width: 200px;
-  background: var(--bg-primary);
-  border-right: 1px solid var(--border);
-  padding: 8px 0;
-  flex-shrink: 0;
-}
-.adm-tab {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+.adm-content-full {
+  flex: 1;
+  padding: 0;
+  overflow-y: auto;
   width: 100%;
-  padding: 10px 16px;
-  border: none;
-  background: none;
-  font-size: 13px;
-  color: var(--text-secondary);
-  cursor: pointer;
-  text-align: left;
-  transition: background .15s, color .15s;
 }
-.adm-tab:hover { background: var(--bg-secondary); color: var(--text-primary); }
-.adm-tab.active { background: var(--primary-light); color: var(--primary); font-weight: 600; border-left: 3px solid var(--primary); }
 .adm-content {
   flex: 1;
   padding: 24px;
@@ -4367,10 +4588,7 @@ input, button, select, textarea {
 }
 @media (max-width: 768px) {
   .adm-container { flex-direction: column; }
-  .adm-sidebar { width: 100%; display: flex; overflow-x: auto; padding: 0; border-right: none; border-bottom: 1px solid var(--border); }
-  .adm-tab { padding: 8px 12px; white-space: nowrap; flex-shrink: 0; }
-  .adm-tab.active { border-left: none; border-bottom: 2px solid var(--primary); }
-  .adm-content { padding: 16px; }
+  .adm-content-full { padding: 0; }
   .adm-stats-grid { grid-template-columns: 1fr 1fr; }
   .adm-info-grid { grid-template-columns: 1fr; }
   .adm-row { flex-direction: column; }

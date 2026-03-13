@@ -16,7 +16,10 @@ const ROUTE_TITLES = {
   '/calendar': 'Calendar',
   '/history': 'Call History',
   '/profile': 'Profile Settings',
-  '/admin': 'Admin Panel',
+  '/admin': 'Admin — Overview',
+  '/admin/users': 'Admin — Users',
+  '/admin/system': 'Admin — System Info',
+  '/admin/config': 'Admin — Configuration',
 };
 
 export default function Dashboard() {

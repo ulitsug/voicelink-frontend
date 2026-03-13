@@ -252,13 +252,61 @@ export function ChatProvider({ children }) {
     socket.on('user_typing', handleTyping);
     socket.on('messages_read', handleMessagesRead);
 
+    const handleMessageDeleted = (data) => {
+      const msgId = data.message_id;
+      // Remove from all chat message lists
+      setMessages((prev) => {
+        const updated = {};
+        let changed = false;
+        for (const key of Object.keys(prev)) {
+          const filtered = prev[key].filter((m) => m.id !== msgId);
+          if (filtered.length !== prev[key].length) changed = true;
+          updated[key] = filtered;
+        }
+        return changed ? updated : prev;
+      });
+      // Refresh conversations to update last_message
+      loadConversations();
+    };
+
+    const handleConversationDeleted = (data) => {
+      const otherId = data.other_user_id;
+      const deletedBy = data.deleted_by;
+      // Determine the chat key from perspective
+      const chatKey = `user_${deletedBy === user?.id ? otherId : deletedBy}`;
+      setMessages((prev) => {
+        if (!prev[chatKey]) return prev;
+        const { [chatKey]: _, ...rest } = prev;
+        return rest;
+      });
+      setConversations((prev) => prev.filter((c) => {
+        const cId = c.user.id;
+        return cId !== otherId && cId !== deletedBy;
+      }));
+      setUnreadCounts((prev) => {
+        if (!prev[chatKey]) return prev;
+        const { [chatKey]: _, ...rest } = prev;
+        return rest;
+      });
+      // If this conversation is currently open, close it
+      const ac = activeChatRef.current;
+      if (ac?.type === 'user' && (ac.id === otherId || ac.id === deletedBy)) {
+        setActiveChat(null);
+      }
+    };
+
+    socket.on('message_deleted', handleMessageDeleted);
+    socket.on('conversation_deleted', handleConversationDeleted);
+
     return () => {
       socket.off('new_message', handleNewMessage);
       socket.off('message_sent', handleMessageSent);
       socket.off('user_typing', handleTyping);
       socket.off('messages_read', handleMessagesRead);
+      socket.off('message_deleted', handleMessageDeleted);
+      socket.off('conversation_deleted', handleConversationDeleted);
     };
-  }, [socket, addMessage, updateConversation]);
+  }, [socket, addMessage, updateConversation, loadConversations, user]);
 
   const loadMessages = useCallback(async (chatType, chatId) => {
     const chatKey = `${chatType}_${chatId}`;
@@ -319,6 +367,43 @@ export function ChatProvider({ children }) {
     loadMessages(type, id);
   }, [loadMessages]);
 
+  const deleteMessage = useCallback(async (messageId, chatKey) => {
+    try {
+      await chatAPI.deleteMessage(messageId);
+      setMessages((prev) => {
+        const msgs = prev[chatKey];
+        if (!msgs) return prev;
+        return { ...prev, [chatKey]: msgs.filter((m) => m.id !== messageId) };
+      });
+      // Refresh conversations to update last_message
+      loadConversations();
+      return true;
+    } catch (e) {
+      console.error('Failed to delete message:', e);
+      return false;
+    }
+  }, [loadConversations]);
+
+  const deleteConversation = useCallback(async (otherUserId) => {
+    try {
+      await chatAPI.deleteConversation(otherUserId);
+      const chatKey = `user_${otherUserId}`;
+      setMessages((prev) => {
+        const { [chatKey]: _, ...rest } = prev;
+        return rest;
+      });
+      setConversations((prev) => prev.filter((c) => c.user.id !== otherUserId));
+      setUnreadCounts((prev) => {
+        const { [chatKey]: _, ...rest } = prev;
+        return rest;
+      });
+      return true;
+    } catch (e) {
+      console.error('Failed to delete conversation:', e);
+      return false;
+    }
+  }, []);
+
   // Compute total unread count across all chats
   const totalUnread = useMemo(() => {
     return Object.values(unreadCounts).reduce((sum, c) => sum + (c || 0), 0);
@@ -338,6 +423,8 @@ export function ChatProvider({ children }) {
     sendTyping,
     openChat,
     setActiveChat,
+    deleteMessage,
+    deleteConversation,
   };
 
   return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;

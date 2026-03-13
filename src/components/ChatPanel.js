@@ -7,7 +7,7 @@ import { useCall } from '../contexts/CallContext';
 import {
   FiSend, FiPaperclip, FiArrowLeft, FiFile, FiPhone, FiVideo,
   FiMessageSquare, FiCheck, FiCheckCircle, FiChevronUp,
-  FiX, FiDownload, FiImage,
+  FiX, FiDownload, FiImage, FiTrash2, FiAlertCircle,
 } from 'react-icons/fi';
 
 function formatTime(isoStr) {
@@ -124,7 +124,7 @@ export default function ChatPanel() {
   const {
     messages, activeChat, unreadCounts, typingUsers, conversations,
     openChat, sendMessage, sendTyping, setActiveChat, loadConversations,
-    prependMessages,
+    prependMessages, deleteMessage, deleteConversation,
   } = useChat();
   const [messageText, setMessageText] = useState('');
   const [uploading, setUploading] = useState(false);
@@ -135,7 +135,10 @@ export default function ChatPanel() {
   const [pendingFile, setPendingFile] = useState(null);
   const [pendingPreviewUrl, setPendingPreviewUrl] = useState(null);
   const [fileCaption, setFileCaption] = useState('');
-  const messagesEndRef = useRef(null);
+  const [selectedMessages, setSelectedMessages] = useState(new Set());
+  const [selectMode, setSelectMode] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(null); // { type: 'message'|'conversation', id, name? }
+  const [deleting, setDeleting] = useState(false);  const messagesEndRef = useRef(null);
   const messagesContainerRef = useRef(null);
   const fileInputRef = useRef(null);
   const typingTimeoutRef = useRef(null);
@@ -159,6 +162,8 @@ export default function ChatPanel() {
     setHasMorePages(true);
     prevMessagesLenRef.current = 0;
     shouldScrollRef.current = true;
+    setSelectMode(false);
+    setSelectedMessages(new Set());
     setTimeout(() => {
       messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
     }, 100);
@@ -310,6 +315,47 @@ export default function ChatPanel() {
     return contact?.contact?.display_name || `User ${contactId}`;
   };
 
+  const toggleSelectMessage = (msgId) => {
+    setSelectedMessages((prev) => {
+      const next = new Set(prev);
+      if (next.has(msgId)) next.delete(msgId);
+      else next.add(msgId);
+      return next;
+    });
+  };
+
+  const handleDeleteSelected = async () => {
+    if (selectedMessages.size === 0) return;
+    setDeleting(true);
+    for (const msgId of selectedMessages) {
+      await deleteMessage(msgId, chatKey);
+    }
+    setSelectedMessages(new Set());
+    setSelectMode(false);
+    setDeleting(false);
+  };
+
+  const handleDeleteConversation = async (userId) => {
+    setDeleting(true);
+    await deleteConversation(userId);
+    setConfirmDelete(null);
+    setDeleting(false);
+  };
+
+  const handleMessageLongPress = (() => {
+    let timer = null;
+    return {
+      onTouchStart: (msgId, isSent) => {
+        if (!isSent) return;
+        timer = setTimeout(() => {
+          setSelectMode(true);
+          setSelectedMessages(new Set([msgId]));
+        }, 500);
+      },
+      onTouchEnd: () => { if (timer) clearTimeout(timer); },
+    };
+  })();
+
   const getContactAvatar = (contactId) => {
     const conv = conversations.find((c) => c.user.id === contactId);
     return conv?.user?.avatar_url || null;
@@ -376,6 +422,20 @@ export default function ChatPanel() {
                         )}
                       </div>
                     </div>
+                    <button
+                      className="btn-delete-conv"
+                      title="Delete conversation"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setConfirmDelete({
+                          type: 'conversation',
+                          id: conv.user.id,
+                          name: conv.user.display_name || conv.user.username,
+                        });
+                      }}
+                    >
+                      <FiTrash2 size={14} />
+                    </button>
                   </div>
                 );
               })}
@@ -416,6 +476,34 @@ export default function ChatPanel() {
             </>
           )}
         </div>
+        {/* Delete confirmation dialog on list view */}
+        {confirmDelete && (
+          <div className="delete-confirm-overlay" onClick={() => !deleting && setConfirmDelete(null)}>
+            <div className="delete-confirm-dialog" onClick={(e) => e.stopPropagation()}>
+              <div className="delete-confirm-icon">
+                <FiAlertCircle size={32} />
+              </div>
+              <h3 className="delete-confirm-title">Delete Conversation</h3>
+              <p className="delete-confirm-text">
+                This will permanently delete all messages with {confirmDelete.name}. This action cannot be undone.
+              </p>
+              <div className="delete-confirm-actions">
+                <button className="btn-cancel" onClick={() => setConfirmDelete(null)} disabled={deleting}>Cancel</button>
+                <button
+                  className="btn-confirm-delete"
+                  disabled={deleting}
+                  onClick={() => handleDeleteConversation(confirmDelete.id)}
+                >
+                  {deleting ? (
+                    <span className="loading-dots"><span>.</span><span>.</span><span>.</span></span>
+                  ) : (
+                    <><FiTrash2 size={14} /> Delete</>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -433,6 +521,26 @@ export default function ChatPanel() {
 
   return (
     <div className="chat-panel active-chat">
+      {selectMode ? (
+        <div className="chat-header select-mode-header">
+          <button className="btn-back" onClick={() => { setSelectMode(false); setSelectedMessages(new Set()); }}>
+            <FiX size={18} />
+          </button>
+          <div className="chat-header-info">
+            <span className="chat-header-name">{selectedMessages.size} selected</span>
+          </div>
+          <div className="chat-header-actions">
+            <button
+              className="btn-action delete"
+              onClick={() => setConfirmDelete({ type: 'messages', count: selectedMessages.size })}
+              disabled={selectedMessages.size === 0 || deleting}
+              title="Delete selected"
+            >
+              <FiTrash2 size={16} />
+            </button>
+          </div>
+        </div>
+      ) : (
       <div className="chat-header">
         <button className="btn-back" onClick={() => { setActiveChat(null); loadConversations(); }}>
           <FiArrowLeft size={18} />
@@ -483,10 +591,22 @@ export default function ChatPanel() {
               >
                 <FiVideo size={16} />
               </button>
+              <button
+                className="btn-action delete"
+                onClick={() => setConfirmDelete({
+                  type: 'conversation',
+                  id: activeChat.id,
+                  name: activeName,
+                })}
+                title="Delete conversation"
+              >
+                <FiTrash2 size={16} />
+              </button>
             </div>
           );
         })()}
       </div>
+      )}
 
       <div className="messages-container" ref={messagesContainerRef}>
         {hasMorePages && chatMessages.length >= 50 && (
@@ -519,6 +639,7 @@ export default function ChatPanel() {
               ? new Date(chatMessages[idx - 1].created_at).toLocaleDateString()
               : null;
             const showDateSep = idx === 0 || msgDate !== prevDate;
+            const isSelected = selectedMessages.has(msg.id);
 
             return (
               <React.Fragment key={msg.id || idx}>
@@ -527,14 +648,33 @@ export default function ChatPanel() {
                     <span>{formatDateLabel(msg.created_at)}</span>
                   </div>
                 )}
-                <div className={`message ${isSent ? 'sent' : 'received'}`}>
+                <div
+                  className={`message ${isSent ? 'sent' : 'received'} ${isSelected ? 'selected' : ''} ${selectMode ? 'select-mode' : ''}`}
+                  onClick={selectMode && isSent ? () => toggleSelectMessage(msg.id) : undefined}
+                  onContextMenu={isSent ? (e) => {
+                    e.preventDefault();
+                    if (!selectMode) {
+                      setSelectMode(true);
+                      setSelectedMessages(new Set([msg.id]));
+                    } else {
+                      toggleSelectMessage(msg.id);
+                    }
+                  } : undefined}
+                  onTouchStart={() => handleMessageLongPress.onTouchStart(msg.id, isSent)}
+                  onTouchEnd={handleMessageLongPress.onTouchEnd}
+                >
+                  {selectMode && isSent && (
+                    <div className={`msg-select-check ${isSelected ? 'checked' : ''}`}>
+                      {isSelected && <FiCheck size={12} />}
+                    </div>
+                  )}
                   {!isSent && msg.sender?.display_name && activeChat.type === 'group' && (
                     <span className="message-sender">{msg.sender.display_name}</span>
                   )}
                   {msg.message_type === 'image' && msg.file_url && (
                     <div
                       className="message-image-thumb"
-                      onClick={() => setLightboxImg({ src: msg.file_url, name: msg.file_name })}
+                      onClick={!selectMode ? () => setLightboxImg({ src: msg.file_url, name: msg.file_name }) : undefined}
                     >
                       <img src={msg.file_url} alt={msg.file_name || 'Image'} />
                       <div className="image-thumb-overlay"><FiImage size={14} /></div>
@@ -566,6 +706,18 @@ export default function ChatPanel() {
                       </span>
                     )}
                   </div>
+                  {isSent && !selectMode && (
+                    <button
+                      className="msg-delete-btn"
+                      title="Delete message"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setConfirmDelete({ type: 'message', id: msg.id });
+                      }}
+                    >
+                      <FiTrash2 size={12} />
+                    </button>
+                  )}
                 </div>
               </React.Fragment>
             );
@@ -635,6 +787,64 @@ export default function ChatPanel() {
           fileName={lightboxImg.name}
           onClose={() => setLightboxImg(null)}
         />
+      )}
+
+      {/* Delete confirmation dialog */}
+      {confirmDelete && (
+        <div className="delete-confirm-overlay" onClick={() => !deleting && setConfirmDelete(null)}>
+          <div className="delete-confirm-dialog" onClick={(e) => e.stopPropagation()}>
+            <div className="delete-confirm-icon">
+              <FiAlertCircle size={32} />
+            </div>
+            <h3 className="delete-confirm-title">
+              {confirmDelete.type === 'conversation'
+                ? 'Delete Conversation'
+                : confirmDelete.type === 'messages'
+                ? `Delete ${confirmDelete.count} Message${confirmDelete.count > 1 ? 's' : ''}`
+                : 'Delete Message'}
+            </h3>
+            <p className="delete-confirm-text">
+              {confirmDelete.type === 'conversation'
+                ? `This will permanently delete all messages with ${confirmDelete.name}. This action cannot be undone.`
+                : 'This will permanently delete the selected message(s). This action cannot be undone.'}
+            </p>
+            <div className="delete-confirm-actions">
+              <button
+                className="btn-cancel"
+                onClick={() => setConfirmDelete(null)}
+                disabled={deleting}
+              >
+                Cancel
+              </button>
+              <button
+                className="btn-confirm-delete"
+                disabled={deleting}
+                onClick={async () => {
+                  if (confirmDelete.type === 'conversation') {
+                    await handleDeleteConversation(confirmDelete.id);
+                  } else if (confirmDelete.type === 'messages') {
+                    setConfirmDelete(null);
+                    await handleDeleteSelected();
+                  } else if (confirmDelete.type === 'message') {
+                    setDeleting(true);
+                    await deleteMessage(confirmDelete.id, chatKey);
+                    setConfirmDelete(null);
+                    setDeleting(false);
+                  }
+                }}
+              >
+                {deleting ? (
+                  <span className="loading-dots"><span>.</span><span>.</span><span>.</span></span>
+                ) : (
+                  <>
+                    <FiTrash2 size={14} />
+                    Delete
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
