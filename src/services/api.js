@@ -67,6 +67,7 @@ export const callsAPI = {
   createLog: (data) => api.post('/calls/log', data),
   updateLog: (callId, data) => api.put(`/calls/log/${callId}`, data),
   getIceConfig: () => api.get('/calls/ice-config'),
+  getActiveCalls: () => api.get('/calls/active'),
 };
 
 // Chat

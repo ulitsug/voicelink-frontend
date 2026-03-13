@@ -2,6 +2,18 @@ import { io } from 'socket.io-client';
 
 let socket = null;
 let heartbeatInterval = null;
+let lastActivity = Date.now();
+
+// Track user activity — any interaction resets the idle timer
+function resetActivity() {
+  lastActivity = Date.now();
+}
+
+if (typeof window !== 'undefined') {
+  ['mousedown', 'keydown', 'touchstart', 'scroll'].forEach(evt =>
+    window.addEventListener(evt, resetActivity, { passive: true })
+  );
+}
 
 export function connectSocket(token) {
   if (socket?.connected) return socket;
@@ -32,12 +44,19 @@ export function connectSocket(token) {
   socket.on('connect', () => {
     console.log('[SOCKET] Connected, sid:', socket.id);
     // (Re-)authenticate on every connect — handles reconnections too
-    socket.emit('authenticate', { token });
+    socket.emit('authenticate', { token, device: 'web' });
 
-    // Start heartbeat to keep session alive
+    // Start heartbeat to keep session alive — send activity status
     if (heartbeatInterval) clearInterval(heartbeatInterval);
     heartbeatInterval = setInterval(() => {
-      if (socket?.connected) socket.emit('heartbeat');
+      if (socket?.connected) {
+        const idleMs = Date.now() - lastActivity;
+        const isIdle = idleMs > 120000; // 2 minutes idle
+        socket.emit('heartbeat', {
+          activity: isIdle ? 'idle' : 'active',
+          device: 'web',
+        });
+      }
     }, 20000);
   });
 

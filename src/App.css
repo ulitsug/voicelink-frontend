@@ -3236,6 +3236,54 @@ body {
   font-weight: 500;
 }
 
+/* Reconnecting banner */
+.call-reconnecting-banner {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #ff9800;
+  color: #fff;
+  padding: 8px 14px;
+  border-radius: var(--radius);
+  margin-bottom: 12px;
+  font-size: 13px;
+  font-weight: 500;
+  animation: pulse-banner 1.5s ease-in-out infinite;
+}
+@keyframes pulse-banner {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+/* Remote user media state indicators */
+.remote-media-indicators {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  display: flex;
+  gap: 6px;
+  z-index: 5;
+}
+.remote-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+}
+.remote-indicator.muted {
+  color: #f44336;
+}
+.remote-indicator.cam-off {
+  color: #ff9800;
+}
+.remote-indicator.screen {
+  color: #4caf50;
+}
+
 /* Call error full-screen card */
 .call-overlay.error-screen {
   background: rgba(0, 0, 0, 0.7);

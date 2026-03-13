@@ -14,6 +14,7 @@ export default function CallOverlay() {
   const {
     callState, callType, remoteUser, isMuted, isVideoOn, isScreenSharing,
     callDuration, localStream, remoteStream, connectionQuality, callError,
+    remoteMediaState, isReconnecting,
     acceptCall, rejectCall, endCall, toggleMute, toggleVideo, toggleScreenShare,
     cleanup,
   } = useCall();
@@ -90,6 +91,14 @@ export default function CallOverlay() {
           </div>
         )}
 
+        {/* Reconnecting banner */}
+        {isReconnecting && callState === 'active' && (
+          <div className="call-reconnecting-banner">
+            <FiWifiOff size={16} />
+            <span>Reconnecting...</span>
+          </div>
+        )}
+
         {/* Incoming call */}
         {callState === 'incoming' && (
           <div className="call-incoming">
@@ -149,6 +158,24 @@ export default function CallOverlay() {
                     </div>
                   </div>
                 )}
+                {/* Remote user media state indicators */}
+                <div className="remote-media-indicators">
+                  {remoteMediaState.muted && (
+                    <span className="remote-indicator muted" title={`${displayName} is muted`}>
+                      <FiMicOff size={14} />
+                    </span>
+                  )}
+                  {!remoteMediaState.video_on && callType === 'video' && (
+                    <span className="remote-indicator cam-off" title={`${displayName}'s camera is off`}>
+                      <FiVideoOff size={14} />
+                    </span>
+                  )}
+                  {remoteMediaState.screen_sharing && (
+                    <span className="remote-indicator screen" title={`${displayName} is sharing screen`}>
+                      <FiMonitor size={14} />
+                    </span>
+                  )}
+                </div>
               </div>
               {(hasLocalVideo || isScreenSharing) && (
                 <div className="local-video-container">

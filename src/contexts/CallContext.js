@@ -21,9 +21,12 @@ export function CallProvider({ children }) {
   const [remoteStream, setRemoteStream] = useState(null);
   const [connectionQuality, setConnectionQuality] = useState(null);
   const [callError, setCallError] = useState(null);
+  const [remoteMediaState, setRemoteMediaState] = useState({ muted: false, video_on: false, screen_sharing: false });
+  const [isReconnecting, setIsReconnecting] = useState(false);
 
   const webrtcRef = useRef(null);
   const timerRef = useRef(null);
+  const ringTimeoutRef = useRef(null);
   // Stable ref to track current remote user inside socket callbacks
   const remoteUserRef = useRef(null);
   const callIdRef = useRef(null);
@@ -57,6 +60,10 @@ export function CallProvider({ children }) {
       clearInterval(timerRef.current);
       timerRef.current = null;
     }
+    if (ringTimeoutRef.current) {
+      clearTimeout(ringTimeoutRef.current);
+      ringTimeoutRef.current = null;
+    }
     if (webrtcRef.current) {
       webrtcRef.current.cleanup();
       webrtcRef.current = null;
@@ -72,6 +79,8 @@ export function CallProvider({ children }) {
     setRemoteStream(null);
     setConnectionQuality(null);
     setCallError(null);
+    setRemoteMediaState({ muted: false, video_on: false, screen_sharing: false });
+    setIsReconnecting(false);
   }, []);
 
   // ─── Wire up a WebRTCService instance ────────────────────
@@ -84,6 +93,23 @@ export function CallProvider({ children }) {
       setRemoteStream(event.streams[0]);
     };
     webrtc.onConnectionStateChange = (state) => {
+      if (state === 'disconnected' || state === 'failed') {
+        if (state === 'disconnected') {
+          // Notify partner we're reconnecting
+          const ru = remoteUserRef.current;
+          if (ru && socket) {
+            socket.emit('call_reconnecting', { target_id: ru.id });
+          }
+          setIsReconnecting(true);
+        }
+      }
+      if (state === 'connected') {
+        setIsReconnecting(false);
+        const ru = remoteUserRef.current;
+        if (ru && socket) {
+          socket.emit('call_reconnected', { target_id: ru.id });
+        }
+      }
       if (state === 'failed') {
         // Only end call on hard failure — disconnected state has a grace period
         // handled by the WebRTC service with ICE restart attempts
@@ -93,7 +119,7 @@ export function CallProvider({ children }) {
           socket.emit('end_call', { target_id: ru.id, call_id: ci });
         }
         if (ci) {
-          callsAPI.updateLog(ci, { status: 'ended' }).catch(() => {});
+          callsAPI.updateLog(ci, { status: 'ended', end_reason: 'network' }).catch(() => {});
         }
         setCallError('Connection lost. The call could not be maintained due to network issues.');
         setTimeout(() => cleanup(), 5000);
@@ -187,6 +213,11 @@ export function CallProvider({ children }) {
 
     const onCallAccepted = async (data) => {
       if (!webrtcRef.current) return;
+      // Clear ring timeout once accepted
+      if (ringTimeoutRef.current) {
+        clearTimeout(ringTimeoutRef.current);
+        ringTimeoutRef.current = null;
+      }
       try {
         await webrtcRef.current.handleAnswer(data.answer);
         // Update remote user with callee info from backend
@@ -249,6 +280,22 @@ export function CallProvider({ children }) {
       }
     };
 
+    const onRemoteMediaState = (data) => {
+      setRemoteMediaState({
+        muted: data.muted || false,
+        video_on: data.video_on || false,
+        screen_sharing: data.screen_sharing || false,
+      });
+    };
+
+    const onCallReconnecting = () => {
+      setIsReconnecting(true);
+    };
+
+    const onCallReconnected = () => {
+      setIsReconnecting(false);
+    };
+
     console.log('[CALL] Registering socket event listeners, socket connected:', socket.connected, 'socket id:', socket.id);
 
     socket.on('incoming_call', onIncomingCall);
@@ -259,6 +306,9 @@ export function CallProvider({ children }) {
     socket.on('call_error', onCallError);
     socket.on('renegotiate_offer', onRenegotiateOffer);
     socket.on('renegotiate_answer', onRenegotiateAnswer);
+    socket.on('remote_media_state', onRemoteMediaState);
+    socket.on('call_reconnecting', onCallReconnecting);
+    socket.on('call_reconnected', onCallReconnected);
 
     return () => {
       socket.off('incoming_call', onIncomingCall);
@@ -269,6 +319,9 @@ export function CallProvider({ children }) {
       socket.off('call_error', onCallError);
       socket.off('renegotiate_offer', onRenegotiateOffer);
       socket.off('renegotiate_answer', onRenegotiateAnswer);
+      socket.off('remote_media_state', onRemoteMediaState);
+      socket.off('call_reconnecting', onCallReconnecting);
+      socket.off('call_reconnected', onCallReconnected);
     };
   }, [socket, wireWebRTC, cleanup, startTimer, getDevicePrefs]);
 
@@ -316,6 +369,18 @@ export function CallProvider({ children }) {
       setRemoteUser(targetUser);
       setCallType(type);
       setCallState('calling');
+
+      // Ring timeout — auto-cancel if no answer within 45 seconds
+      ringTimeoutRef.current = setTimeout(() => {
+        if (callStateRef.current === 'calling') {
+          socket.emit('end_call', { target_id: targetUser.id, call_id: logId });
+          if (logId) {
+            callsAPI.updateLog(logId, { status: 'missed', end_reason: 'no_answer' }).catch(() => {});
+          }
+          setCallError('No answer. The call was not picked up.');
+          setTimeout(() => cleanup(), 5000);
+        }
+      }, 45000);
     } catch (e) {
       console.error('Failed to initiate call:', e);
       const msg = e.name === 'NotAllowedError' ? 'Microphone/camera permission denied. Please allow access in your browser settings.'
@@ -355,7 +420,7 @@ export function CallProvider({ children }) {
       socket.emit('end_call', { target_id: remoteUser.id, call_id: callId });
     }
     if (callId) {
-      callsAPI.updateLog(callId, { status: 'ended' }).catch(() => {});
+      callsAPI.updateLog(callId, { status: 'ended', end_reason: 'normal' }).catch(() => {});
     }
     cleanup();
   }, [socket, remoteUser, callId, cleanup]);
@@ -364,8 +429,16 @@ export function CallProvider({ children }) {
     if (webrtcRef.current) {
       const muted = webrtcRef.current.toggleMute();
       setIsMuted(muted);
+      if (socket && remoteUserRef.current) {
+        socket.emit('media_state_changed', {
+          target_id: remoteUserRef.current.id,
+          muted,
+          video_on: isVideoOn,
+          screen_sharing: isScreenSharing,
+        });
+      }
     }
-  }, []);
+  }, [socket, isVideoOn, isScreenSharing]);
 
   const toggleVideo = useCallback(async () => {
     if (!webrtcRef.current) return;
@@ -379,6 +452,14 @@ export function CallProvider({ children }) {
           if (updatedStream) {
             setLocalStream(updatedStream);
             setIsVideoOn(true);
+            if (socket && remoteUserRef.current) {
+              socket.emit('media_state_changed', {
+                target_id: remoteUserRef.current.id,
+                muted: isMuted,
+                video_on: true,
+                screen_sharing: isScreenSharing,
+              });
+            }
           }
         } catch (e) {
           console.error('Failed to add video track:', e);
@@ -389,7 +470,15 @@ export function CallProvider({ children }) {
 
     const videoOn = webrtcRef.current.toggleVideo();
     setIsVideoOn(videoOn);
-  }, [isVideoOn, callState]);
+    if (socket && remoteUserRef.current) {
+      socket.emit('media_state_changed', {
+        target_id: remoteUserRef.current.id,
+        muted: isMuted,
+        video_on: videoOn,
+        screen_sharing: isScreenSharing,
+      });
+    }
+  }, [isVideoOn, callState, socket, isMuted, isScreenSharing]);
 
   const toggleScreenShare = useCallback(async () => {
     if (!webrtcRef.current) return;
@@ -399,6 +488,12 @@ export function CallProvider({ children }) {
       setIsScreenSharing(false);
       if (socket && remoteUser) {
         socket.emit('screen_share_stopped', { target_id: remoteUser.id });
+        socket.emit('media_state_changed', {
+          target_id: remoteUser.id,
+          muted: isMuted,
+          video_on: isVideoOn,
+          screen_sharing: false,
+        });
       }
     } else {
       try {
@@ -406,12 +501,18 @@ export function CallProvider({ children }) {
         setIsScreenSharing(true);
         if (socket && remoteUser) {
           socket.emit('screen_share_started', { target_id: remoteUser.id });
+          socket.emit('media_state_changed', {
+            target_id: remoteUser.id,
+            muted: isMuted,
+            video_on: isVideoOn,
+            screen_sharing: true,
+          });
         }
       } catch (e) {
         console.error('Screen share failed:', e);
       }
     }
-  }, [isScreenSharing, socket, remoteUser]);
+  }, [isScreenSharing, socket, remoteUser, isMuted, isVideoOn]);
 
   const value = {
     callState,
@@ -425,6 +526,8 @@ export function CallProvider({ children }) {
     remoteStream,
     connectionQuality,
     callError,
+    remoteMediaState,
+    isReconnecting,
     initiateCall,
     acceptCall,
     rejectCall,
