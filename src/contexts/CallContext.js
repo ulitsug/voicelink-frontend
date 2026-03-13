@@ -3,6 +3,7 @@ import { useAuth } from './AuthContext';
 import { WebRTCService } from '../services/webrtc';
 import { callsAPI } from '../services/api';
 import { startRingtone, stopRingtone } from '../services/ringtone';
+import { showLocalNotification } from '../services/serviceWorker';
 
 const CallContext = createContext(null);
 
@@ -161,6 +162,17 @@ export function CallProvider({ children }) {
         setCallId(data.call_id);
         startRingtone();
         setCallState('incoming');
+
+        // Show browser notification when tab is not focused
+        if (document.hidden) {
+          const callerName = callerInfo.display_name || callerInfo.username || 'Someone';
+          const typeLabel = data.call_type === 'video' ? 'Video' : 'Voice';
+          showLocalNotification(`Incoming ${typeLabel} Call`, `${callerName} is calling you`, {
+            tag: 'incoming-call',
+            requireInteraction: true,
+            vibrate: [300, 100, 300, 100, 300],
+          });
+        }
       } catch (e) {
         console.error('Failed to handle incoming call:', e);
         const msg = e.name === 'NotAllowedError' ? 'Microphone/camera permission denied'

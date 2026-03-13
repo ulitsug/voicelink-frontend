@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { useAuth } from './AuthContext';
 import { chatAPI } from '../services/api';
+import { showLocalNotification } from '../services/serviceWorker';
 
 const ChatContext = createContext(null);
 
@@ -152,6 +153,17 @@ export function ChatProvider({ children }) {
           [chatKey]: (prev[chatKey] || 0) + 1,
         }));
         playNotificationSound();
+
+        // Show browser notification when tab is not focused
+        if (document.hidden) {
+          const senderName = message.sender?.display_name || message.sender?.username || 'Someone';
+          const preview = message.message_type === 'text'
+            ? (message.content || 'Sent a message').slice(0, 100)
+            : `Sent a ${message.message_type}`;
+          showLocalNotification(senderName, preview, {
+            tag: `msg-${message.sender_id}`,
+          });
+        }
       }
     };
 

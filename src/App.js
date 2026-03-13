@@ -5,6 +5,9 @@ import { CallProvider } from './contexts/CallContext';
 import { ChatProvider } from './contexts/ChatContext';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
+import VerifyEmail from './pages/VerifyEmail';
 import LandingPage from './pages/LandingPage';
 import Dashboard from './pages/Dashboard';
 import CallOverlay from './components/CallOverlay';
@@ -59,6 +62,9 @@ function AppRoutes() {
         <Route path="/welcome" element={<PublicRoute><LandingPage /></PublicRoute>} />
         <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
         <Route path="/register" element={<PublicRoute><Register /></PublicRoute>} />
+        <Route path="/forgot-password" element={<PublicRoute><ForgotPassword /></PublicRoute>} />
+        <Route path="/reset-password" element={<PublicRoute><ResetPassword /></PublicRoute>} />
+        <Route path="/verify-email" element={<VerifyEmail />} />
         <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>}>
           <Route index element={<Suspense fallback={<PageLoader />}><HomeScreen /></Suspense>} />
           <Route path="users" element={<Suspense fallback={<PageLoader />}><UsersList /></Suspense>} />

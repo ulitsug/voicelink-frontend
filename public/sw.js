@@ -95,7 +95,16 @@ self.addEventListener('push', (event) => {
         ],
   };
 
-  event.waitUntil(self.registration.showNotification(data.title, options));
+  // Only show push notification if no client window is currently focused
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: false }).then((clients) => {
+      const anyFocused = clients.some((c) => c.focused);
+      if (!anyFocused) {
+        return self.registration.showNotification(data.title, options);
+      }
+      // App is focused — skip push notification (in-app UI handles it)
+    })
+  );
 });
 
 /* ───── Notification click ───── */

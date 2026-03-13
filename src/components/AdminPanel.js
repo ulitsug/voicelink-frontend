@@ -4,7 +4,8 @@ import {
   FiUsers, FiSettings, FiServer, FiActivity, FiSearch,
   FiPlus, FiEdit2, FiTrash2, FiX, FiChevronLeft, FiChevronRight,
   FiShield, FiUser, FiSave, FiDatabase, FiWifi, FiCpu,
-  FiMessageSquare, FiPhone, FiGlobe,
+  FiMessageSquare, FiPhone, FiGlobe, FiMail, FiCheck, FiXCircle,
+  FiSend, FiKey,
 } from 'react-icons/fi';
 
 const ADMIN_TABS = [
@@ -135,6 +136,8 @@ function AdminUsers() {
   const [editUser, setEditUser] = useState(null);
   const [showCreate, setShowCreate] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
+  const [actionLoading, setActionLoading] = useState({});
+  const [actionMessage, setActionMessage] = useState('');
   const searchTimer = useRef(null);
 
   useEffect(() => { loadUsers(); }, [page, roleFilter]);
@@ -167,9 +170,71 @@ function AdminUsers() {
     }
   };
 
+  const showMsg = (msg) => {
+    setActionMessage(msg);
+    setTimeout(() => setActionMessage(''), 4000);
+  };
+
+  const handleSendVerification = async (userId) => {
+    setActionLoading(prev => ({ ...prev, [`verify_${userId}`]: true }));
+    try {
+      const { data } = await adminAPI.sendVerification(userId);
+      showMsg(data.message);
+    } catch (e) {
+      showMsg(e.response?.data?.error || 'Failed to send verification email');
+    } finally {
+      setActionLoading(prev => ({ ...prev, [`verify_${userId}`]: false }));
+    }
+  };
+
+  const handleManualVerify = async (userId) => {
+    setActionLoading(prev => ({ ...prev, [`mverify_${userId}`]: true }));
+    try {
+      const { data } = await adminAPI.verifyUserEmail(userId);
+      showMsg(data.message);
+      loadUsers();
+    } catch (e) {
+      showMsg(e.response?.data?.error || 'Failed to verify');
+    } finally {
+      setActionLoading(prev => ({ ...prev, [`mverify_${userId}`]: false }));
+    }
+  };
+
+  const handleUnverify = async (userId) => {
+    setActionLoading(prev => ({ ...prev, [`unverify_${userId}`]: true }));
+    try {
+      const { data } = await adminAPI.unverifyUserEmail(userId);
+      showMsg(data.message);
+      loadUsers();
+    } catch (e) {
+      showMsg(e.response?.data?.error || 'Failed to unverify');
+    } finally {
+      setActionLoading(prev => ({ ...prev, [`unverify_${userId}`]: false }));
+    }
+  };
+
+  const handleSendReset = async (userId) => {
+    setActionLoading(prev => ({ ...prev, [`reset_${userId}`]: true }));
+    try {
+      const { data } = await adminAPI.sendPasswordReset(userId);
+      showMsg(data.message);
+    } catch (e) {
+      showMsg(e.response?.data?.error || 'Failed to send reset email');
+    } finally {
+      setActionLoading(prev => ({ ...prev, [`reset_${userId}`]: false }));
+    }
+  };
+
   const roleBadge = (role) => {
     const cls = role === 'super_admin' ? 'super' : role === 'admin' ? 'admin' : 'user';
     return <span className={`adm-role-badge ${cls}`}>{role === 'super_admin' ? 'Super Admin' : role === 'admin' ? 'Admin' : 'User'}</span>;
+  };
+
+  const verifiedBadge = (u) => {
+    if (u.role === 'super_admin' || u.role === 'admin') return <span className="adm-verified-badge verified">N/A</span>;
+    return u.email_verified
+      ? <span className="adm-verified-badge verified"><FiCheck size={11} /> Verified</span>
+      : <span className="adm-verified-badge unverified"><FiXCircle size={11} /> Unverified</span>;
   };
 
   return (
@@ -180,6 +245,8 @@ function AdminUsers() {
           <FiPlus size={14} /> Create User
         </button>
       </div>
+
+      {actionMessage && <div className="adm-action-msg">{actionMessage}</div>}
 
       <div className="adm-filters">
         <div className="adm-search">
@@ -210,6 +277,7 @@ function AdminUsers() {
                 <th>User</th>
                 <th>Email</th>
                 <th>Role</th>
+                <th>Status</th>
                 <th>Created</th>
                 <th>Actions</th>
               </tr>
@@ -231,12 +299,53 @@ function AdminUsers() {
                   </td>
                   <td className="adm-email">{u.email}</td>
                   <td>{roleBadge(u.role)}</td>
+                  <td>{verifiedBadge(u)}</td>
                   <td className="adm-date">{u.created_at ? new Date(u.created_at).toLocaleDateString() : '-'}</td>
                   <td>
                     <div className="adm-actions">
                       <button className="adm-icon-btn" title="Edit" onClick={() => setEditUser(u)}>
                         <FiEdit2 size={14} />
                       </button>
+                      {u.role !== 'super_admin' && !u.email_verified && u.role === 'user' && (
+                        <>
+                          <button
+                            className="adm-icon-btn success"
+                            title="Send Verification Email"
+                            onClick={() => handleSendVerification(u.id)}
+                            disabled={actionLoading[`verify_${u.id}`]}
+                          >
+                            <FiSend size={14} />
+                          </button>
+                          <button
+                            className="adm-icon-btn success"
+                            title="Manually Verify"
+                            onClick={() => handleManualVerify(u.id)}
+                            disabled={actionLoading[`mverify_${u.id}`]}
+                          >
+                            <FiCheck size={14} />
+                          </button>
+                        </>
+                      )}
+                      {u.role === 'user' && u.email_verified && (
+                        <button
+                          className="adm-icon-btn warning"
+                          title="Revoke Verification"
+                          onClick={() => handleUnverify(u.id)}
+                          disabled={actionLoading[`unverify_${u.id}`]}
+                        >
+                          <FiXCircle size={14} />
+                        </button>
+                      )}
+                      {u.role !== 'super_admin' && (
+                        <button
+                          className="adm-icon-btn"
+                          title="Send Password Reset Email"
+                          onClick={() => handleSendReset(u.id)}
+                          disabled={actionLoading[`reset_${u.id}`]}
+                        >
+                          <FiKey size={14} />
+                        </button>
+                      )}
                       {u.role !== 'super_admin' && (
                         <button className="adm-icon-btn danger" title="Delete" onClick={() => setDeleteConfirm(u)}>
                           <FiTrash2 size={14} />
@@ -247,7 +356,7 @@ function AdminUsers() {
                 </tr>
               ))}
               {users.length === 0 && (
-                <tr><td colSpan={6} className="adm-empty-row">No users found</td></tr>
+                <tr><td colSpan={7} className="adm-empty-row">No users found</td></tr>
               )}
             </tbody>
           </table>
@@ -306,6 +415,7 @@ function UserFormModal({ user, onClose, onSaved }) {
     bio: user?.bio || '',
     role: user?.role || 'user',
     password: '',
+    email_verified: user?.email_verified || false,
   });
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
@@ -318,6 +428,7 @@ function UserFormModal({ user, onClose, onSaved }) {
       if (isEdit) {
         const payload = { ...form };
         if (!payload.password) delete payload.password;
+        delete payload.email_verified; // verification managed via separate actions
         await adminAPI.updateUser(user.id, payload);
       } else {
         if (!form.password) { setError('Password is required'); setSaving(false); return; }
@@ -372,6 +483,18 @@ function UserFormModal({ user, onClose, onSaved }) {
               <label>{isEdit ? 'New Password (leave blank to keep)' : 'Password'}</label>
               <input type="password" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} {...(!isEdit && { required: true })} />
             </div>
+            {!isEdit && (
+              <div className="adm-field full">
+                <label className="adm-checkbox-label">
+                  <input
+                    type="checkbox"
+                    checked={form.email_verified}
+                    onChange={e => setForm(f => ({ ...f, email_verified: e.target.checked }))}
+                  />
+                  Mark email as verified (skip email verification)
+                </label>
+              </div>
+            )}
           </div>
           {error && <div className="adm-error">{error}</div>}
           <div className="adm-modal-actions">

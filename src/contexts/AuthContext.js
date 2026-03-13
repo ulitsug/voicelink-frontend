@@ -47,14 +47,7 @@ export function AuthProvider({ children }) {
 
   const register = useCallback(async (userData) => {
     const { data } = await authAPI.register(userData);
-    localStorage.setItem('access_token', data.access_token);
-    localStorage.setItem('user', JSON.stringify(data.user));
-    setUser(data.user);
-    const sock = connectSocket(data.access_token);
-    setSocket(sock);
-    requestNotificationPermission().then((perm) => {
-      if (perm === 'granted') subscribeToPush(data.access_token);
-    });
+    // Registration no longer auto-logs in; user must verify email first
     return data;
   }, []);
 

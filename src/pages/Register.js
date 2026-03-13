@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
-import { FiPhone, FiMail, FiLock, FiUser, FiArrowRight } from 'react-icons/fi';
+import { authAPI } from '../services/api';
+import { FiPhone, FiMail, FiLock, FiUser, FiArrowRight, FiCheckCircle } from 'react-icons/fi';
 
 export default function Register() {
-  const { register } = useAuth();
   const [formData, setFormData] = useState({
     username: '',
     email: '',
@@ -14,6 +13,7 @@ export default function Register() {
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [registered, setRegistered] = useState(false);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -30,18 +30,41 @@ export default function Register() {
 
     setLoading(true);
     try {
-      await register({
+      await authAPI.register({
         username: formData.username,
         email: formData.email,
         display_name: formData.display_name,
         password: formData.password,
       });
+      setRegistered(true);
     } catch (err) {
       setError(err.response?.data?.error || 'Registration failed');
     } finally {
       setLoading(false);
     }
   };
+
+  if (registered) {
+    return (
+      <div className="auth-page">
+        <div className="auth-card">
+          <div className="auth-logo" style={{ color: 'var(--success)' }}>
+            <FiCheckCircle size={48} />
+          </div>
+          <h1>Account Created</h1>
+          <p className="auth-subtitle" style={{ marginBottom: 16 }}>
+            Your account has been created successfully. An admin will review your registration and send you a verification email.
+          </p>
+          <p className="auth-subtitle">
+            Please check your email for a verification link once approved.
+          </p>
+          <p className="auth-footer" style={{ marginTop: 24 }}>
+            Already verified? <Link to="/login">Sign In</Link>
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="auth-page">

@@ -33,6 +33,9 @@ api.interceptors.response.use(
 export const authAPI = {
   register: (data) => api.post('/auth/register', data),
   login: (data) => api.post('/auth/login', data),
+  verifyEmail: (token) => api.post('/auth/verify-email', { token }),
+  forgotPassword: (email) => api.post('/auth/forgot-password', { email }),
+  resetPassword: (data) => api.post('/auth/reset-password', data),
   getMe: () => api.get('/auth/me'),
   updateProfile: (data) => api.put('/auth/update-profile', data),
   changePassword: (data) => api.put('/auth/change-password', data),
@@ -115,6 +118,11 @@ export const adminAPI = {
   createUser: (data) => api.post('/admin/users', data),
   updateUser: (userId, data) => api.put(`/admin/users/${userId}`, data),
   deleteUser: (userId) => api.delete(`/admin/users/${userId}`),
+  getPendingVerification: () => api.get('/admin/users/pending-verification'),
+  sendVerification: (userId) => api.post(`/admin/users/${userId}/send-verification`),
+  verifyUserEmail: (userId) => api.post(`/admin/users/${userId}/verify-email`),
+  unverifyUserEmail: (userId) => api.post(`/admin/users/${userId}/unverify-email`),
+  sendPasswordReset: (userId) => api.post(`/admin/users/${userId}/send-reset`),
   getMessageStats: () => api.get('/admin/stats/messages'),
   getCallStats: () => api.get('/admin/stats/calls'),
 };
