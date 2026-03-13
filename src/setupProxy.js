@@ -2,10 +2,13 @@ const { createProxyMiddleware } = require('http-proxy-middleware');
 const https = require('https');
 
 module.exports = function (app) {
-  const target = process.env.REACT_APP_API_URL || 'https://localhost:5001';
+  const target = process.env.REACT_APP_API_URL || 'http://localhost:5001';
 
-  // Agent that accepts self-signed certs (needed for WebSocket upgrade too)
-  const agent = new https.Agent({ rejectUnauthorized: false });
+  // Use appropriate agent based on protocol
+  const http = require('http');
+  const agent = target.startsWith('https') 
+    ? new https.Agent({ rejectUnauthorized: false })
+    : new http.Agent({ keepAlive: true });
 
   app.use(
     '/api',
