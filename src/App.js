@@ -5,6 +5,7 @@ import { CallProvider } from './contexts/CallContext';
 import { ChatProvider } from './contexts/ChatContext';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import LandingPage from './pages/LandingPage';
 import Dashboard from './pages/Dashboard';
 import CallOverlay from './components/CallOverlay';
 import { InstallPrompt, OfflineIndicator } from './components/PWAComponents';
@@ -23,7 +24,7 @@ const AdminPanel = lazy(() => import('./components/AdminPanel'));
 function ProtectedRoute({ children }) {
   const { isAuthenticated, loading } = useAuth();
   if (loading) return <div className="loading-screen">Loading...</div>;
-  return isAuthenticated ? children : <Navigate to="/login" />;
+  return isAuthenticated ? children : <Navigate to="/welcome" />;
 }
 
 function PublicRoute({ children }) {
@@ -55,6 +56,7 @@ function AppRoutes() {
   return (
     <>
       <Routes>
+        <Route path="/welcome" element={<PublicRoute><LandingPage /></PublicRoute>} />
         <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
         <Route path="/register" element={<PublicRoute><Register /></PublicRoute>} />
         <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>}>
