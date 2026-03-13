@@ -9,6 +9,7 @@ import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import VerifyEmail from './pages/VerifyEmail';
 import LandingPage from './pages/LandingPage';
+import ApiDocs from './pages/ApiDocs';
 import Dashboard from './pages/Dashboard';
 import CallOverlay from './components/CallOverlay';
 import { InstallPrompt, OfflineIndicator } from './components/PWAComponents';
@@ -65,6 +66,7 @@ function AppRoutes() {
         <Route path="/forgot-password" element={<PublicRoute><ForgotPassword /></PublicRoute>} />
         <Route path="/reset-password" element={<PublicRoute><ResetPassword /></PublicRoute>} />
         <Route path="/verify-email" element={<VerifyEmail />} />
+        <Route path="/docs" element={<ApiDocs />} />
         <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>}>
           <Route index element={<Suspense fallback={<PageLoader />}><HomeScreen /></Suspense>} />
           <Route path="users" element={<Suspense fallback={<PageLoader />}><UsersList /></Suspense>} />

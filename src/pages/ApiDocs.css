@@ -1,0 +1,545 @@
+/* ────────────────────────────────────────────────────────────── */
+/*  API Documentation – Full-page layout                         */
+/* ────────────────────────────────────────────────────────────── */
+
+.apidoc {
+  display: flex;
+  min-height: 100vh;
+  background: #0b1120;
+  color: #d1d5db;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* ── Sidebar ── */
+
+.apidoc-sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 260px;
+  height: 100vh;
+  background: #0E1B2D;
+  border-right: 1px solid #1e293b;
+  display: flex;
+  flex-direction: column;
+  z-index: 100;
+  overflow: hidden;
+}
+
+.apidoc-sidebar-top {
+  padding: 20px 18px 12px;
+  border-bottom: 1px solid #1e293b;
+}
+
+.apidoc-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #94a3b8;
+  text-decoration: none;
+  font-size: 13px;
+  margin-bottom: 8px;
+  transition: color 0.2s;
+}
+.apidoc-back:hover { color: #cfb000; }
+
+.apidoc-sidebar-top h2 {
+  color: #f1f5f9;
+  font-size: 18px;
+  margin: 0 0 2px;
+}
+
+.apidoc-version {
+  color: #64748b;
+  font-size: 12px;
+  margin: 0;
+}
+
+.apidoc-sidebar-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border-bottom: 1px solid #1e293b;
+  color: #64748b;
+}
+
+.apidoc-sidebar-search input {
+  background: none;
+  border: none;
+  outline: none;
+  color: #e2e8f0;
+  font-size: 13px;
+  width: 100%;
+}
+.apidoc-sidebar-search input::placeholder { color: #4b5563; }
+
+.apidoc-sidebar-nav {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px 0;
+}
+
+.apidoc-nav-group {
+  margin-bottom: 10px;
+}
+
+.apidoc-nav-label {
+  display: block;
+  padding: 6px 18px;
+  color: #64748b;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1.3px;
+  font-weight: 600;
+}
+
+.apidoc-sidebar-nav a {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 7px 18px;
+  color: #94a3b8;
+  text-decoration: none;
+  font-size: 13px;
+  transition: all 0.15s;
+}
+.apidoc-sidebar-nav a:hover { color: #e2e8f0; background: #111d30; }
+.apidoc-sidebar-nav a.active {
+  color: #cfb000;
+  background: rgba(207, 176, 0, 0.08);
+  border-right: 2px solid #cfb000;
+}
+
+.apidoc-nav-count {
+  background: #1e293b;
+  color: #64748b;
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 8px;
+  font-weight: 600;
+}
+
+/* ── Main ── */
+
+.apidoc-main {
+  margin-left: 260px;
+  flex: 1;
+  padding: 0;
+  min-width: 0;
+}
+
+.apidoc-header {
+  padding: 32px 40px;
+  border-bottom: 1px solid #1e293b;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.apidoc-header h1 {
+  color: #f1f5f9;
+  font-size: 24px;
+  margin: 0 0 4px;
+}
+.apidoc-header > div:first-child p {
+  color: #94a3b8;
+  margin: 0;
+  font-size: 14px;
+}
+
+.apidoc-base-url {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #111827;
+  border: 1px solid #1e293b;
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 13px;
+  color: #94a3b8;
+}
+.apidoc-base-url code {
+  color: #22d3ee;
+  font-family: 'Fira Code', 'Consolas', monospace;
+  font-size: 13px;
+}
+
+/* ── Overview ── */
+
+.apidoc-overview {
+  padding: 28px 40px;
+  border-bottom: 1px solid #1e293b;
+}
+.apidoc-overview h2 {
+  color: #f1f5f9;
+  font-size: 18px;
+  margin: 0 0 16px;
+}
+
+.apidoc-overview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.apidoc-overview-card {
+  background: #111827;
+  border: 1px solid #1e293b;
+  border-radius: 10px;
+  padding: 18px;
+}
+.apidoc-overview-card h3 {
+  color: #e2e8f0;
+  font-size: 14px;
+  margin: 0 0 8px;
+}
+.apidoc-overview-card p {
+  font-size: 13px;
+  line-height: 1.6;
+  margin: 0 0 8px;
+  color: #94a3b8;
+}
+.apidoc-overview-card pre {
+  background: #0b1120;
+  border: 1px solid #1e293b;
+  border-radius: 6px;
+  padding: 10px 12px;
+  font-size: 12px;
+  color: #22d3ee;
+  overflow-x: auto;
+  margin: 0;
+  font-family: 'Fira Code', 'Consolas', monospace;
+}
+.apidoc-overview-card ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.apidoc-overview-card li {
+  margin: 6px 0;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.apidoc-overview-card code {
+  background: #1e293b;
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-size: 12px;
+  color: #22d3ee;
+  font-family: 'Fira Code', 'Consolas', monospace;
+}
+
+/* ── Section ── */
+
+.apidoc-section {
+  padding: 26px 40px 20px;
+  border-bottom: 1px solid #1e293b;
+}
+
+.apidoc-section-header h2 {
+  color: #f1f5f9;
+  font-size: 18px;
+  margin: 0 0 6px;
+}
+.apidoc-section-header p {
+  color: #94a3b8;
+  font-size: 13px;
+  margin: 0 0 18px;
+  line-height: 1.6;
+}
+
+/* ── Endpoint Card ── */
+
+.apidoc-endpoints {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.apidoc-endpoint {
+  border: 1px solid #1e293b;
+  border-radius: 8px;
+  overflow: hidden;
+  transition: border-color 0.15s;
+}
+.apidoc-endpoint.open {
+  border-color: #334155;
+}
+
+.apidoc-endpoint-header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: #111827;
+  border: none;
+  cursor: pointer;
+  gap: 12px;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+.apidoc-endpoint-header:hover {
+  background: #14202e;
+}
+
+.apidoc-endpoint-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  color: #94a3b8;
+}
+
+.apidoc-method {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 0.5px;
+  flex-shrink: 0;
+  font-family: 'Fira Code', 'Consolas', monospace;
+}
+
+.apidoc-path {
+  font-family: 'Fira Code', 'Consolas', monospace;
+  font-size: 13px;
+  color: #e2e8f0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.apidoc-endpoint-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.apidoc-summary {
+  color: #94a3b8;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.apidoc-auth {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  flex-shrink: 0;
+}
+.apidoc-auth--public { background: rgba(34, 163, 100, 0.15); color: #22a364; }
+.apidoc-auth--jwt    { background: rgba(37, 104, 212, 0.15); color: #60a5fa; }
+.apidoc-auth--admin  { background: rgba(212, 59, 37, 0.15); color: #f87171; }
+
+.apidoc-dir {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  flex-shrink: 0;
+}
+.apidoc-dir--emit  { background: rgba(37, 104, 212, 0.15); color: #60a5fa; }
+.apidoc-dir--listen { background: rgba(34, 163, 100, 0.15); color: #22a364; }
+.apidoc-dir--both  { background: rgba(124, 58, 237, 0.15); color: #a78bfa; }
+
+/* ── Endpoint Body ── */
+
+.apidoc-endpoint-body {
+  padding: 14px 18px 18px;
+  background: #0d1526;
+  border-top: 1px solid #1e293b;
+}
+
+.apidoc-desc {
+  color: #94a3b8;
+  font-size: 13px;
+  margin: 0 0 14px;
+  line-height: 1.6;
+}
+
+.apidoc-fields {
+  margin-bottom: 14px;
+}
+.apidoc-fields-title {
+  display: block;
+  color: #94a3b8;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.apidoc-fields table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.apidoc-fields th {
+  text-align: left;
+  color: #64748b;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 6px 10px;
+  border-bottom: 1px solid #1e293b;
+}
+.apidoc-fields td {
+  padding: 6px 10px;
+  border-bottom: 1px solid #1a2332;
+  color: #d1d5db;
+}
+.apidoc-fields td code {
+  color: #22d3ee;
+  font-family: 'Fira Code', 'Consolas', monospace;
+  font-size: 12px;
+}
+.apidoc-fields td:nth-child(3) {
+  color: #f59e0b;
+  font-size: 12px;
+}
+
+/* ── Responses ── */
+
+.apidoc-responses {
+  margin-bottom: 4px;
+}
+
+.apidoc-response {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+.apidoc-status {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  font-family: 'Fira Code', 'Consolas', monospace;
+  flex-shrink: 0;
+}
+.apidoc-status.ok  { background: rgba(34, 163, 100, 0.15); color: #22a364; }
+.apidoc-status.err { background: rgba(212, 59, 37, 0.15); color: #f87171; }
+
+.apidoc-example {
+  width: 100%;
+  position: relative;
+}
+.apidoc-example pre {
+  background: #0b1120;
+  border: 1px solid #1e293b;
+  border-radius: 6px;
+  padding: 10px 12px;
+  font-size: 12px;
+  color: #a5b4fc;
+  overflow-x: auto;
+  margin: 4px 0 0;
+  font-family: 'Fira Code', 'Consolas', monospace;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.apidoc-copy {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: #1e293b;
+  border: none;
+  color: #94a3b8;
+  border-radius: 4px;
+  padding: 4px 6px;
+  cursor: pointer;
+  opacity: 0.6;
+  transition: opacity 0.15s;
+}
+.apidoc-copy:hover { opacity: 1; }
+
+.apidoc-response-note {
+  background: #111827;
+  border: 1px solid #1e293b;
+  border-radius: 6px;
+  padding: 10px 14px;
+  font-size: 13px;
+  color: #94a3b8;
+  margin-top: 8px;
+}
+.apidoc-response-note strong { color: #e2e8f0; }
+
+/* ── WS Divider ── */
+
+.apidoc-ws-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 40px;
+  background: #0E1B2D;
+  color: #a78bfa;
+  font-weight: 600;
+  font-size: 15px;
+  border-bottom: 1px solid #1e293b;
+  border-top: 1px solid #1e293b;
+}
+
+/* ── Footer ── */
+
+.apidoc-footer {
+  padding: 30px 40px;
+  text-align: center;
+  color: #4b5563;
+  font-size: 13px;
+}
+
+/* ── Responsive ── */
+
+@media (max-width: 860px) {
+  .apidoc-sidebar {
+    display: none;
+  }
+  .apidoc-main {
+    margin-left: 0;
+  }
+  .apidoc-header {
+    padding: 20px 16px;
+    flex-direction: column;
+  }
+  .apidoc-section,
+  .apidoc-overview {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+  .apidoc-endpoint-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+  .apidoc-endpoint-right {
+    flex-wrap: wrap;
+  }
+  .apidoc-summary {
+    white-space: normal;
+  }
+}

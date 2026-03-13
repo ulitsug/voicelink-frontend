@@ -222,6 +222,25 @@
   color: var(--nav-bg);
 }
 
+.landing-footer-links {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.landing-footer-link {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+.landing-footer-link:hover {
+  color: var(--accent);
+}
+
 .landing-network {
   display: flex;
   align-items: center;

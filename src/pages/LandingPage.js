@@ -2,7 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import {
   FiPhone, FiVideo, FiMessageSquare, FiShield,
-  FiArrowRight, FiWifi,
+  FiArrowRight, FiWifi, FiBookOpen,
 } from 'react-icons/fi';
 import './LandingPage.css';
 
@@ -85,9 +85,12 @@ export default function LandingPage() {
             </svg>
             <span>VoiceLink</span>
           </div>
-          <div className="landing-network">
-            <FiWifi size={13} />
-            <span>Network: <strong>{networkUrl}</strong></span>
+          <div className="landing-footer-links">
+            <Link to="/docs" className="landing-footer-link"><FiBookOpen size={13} /> API Docs</Link>
+            <span className="landing-network">
+              <FiWifi size={13} />
+              Network: <strong>{networkUrl}</strong>
+            </span>
           </div>
         </div>
       </footer>
