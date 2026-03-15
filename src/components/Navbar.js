@@ -5,6 +5,7 @@ import {
   FiMenu, FiX, FiChevronDown, FiActivity, FiServer,
 } from 'react-icons/fi';
 import { useChat } from '../contexts/ChatContext';
+import { useCall } from '../contexts/CallContext';
 
 // Primary tabs shown in mobile bottom nav
 const PRIMARY_PATHS = new Set(['/', '/contacts', '/chat', '/history']);
@@ -18,10 +19,19 @@ const ADMIN_SUBTABS = [
 
 export default function Navbar({ userRole }) {
   const { totalUnread } = useChat();
+  const { callState } = useCall();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
   const location = useLocation();
   const isAdmin = userRole === 'admin' || userRole === 'super_admin';
+  const inCall = callState === 'active' || callState === 'calling' || callState === 'incoming' || callState === 'reconnecting';
+
+  // Block navigation clicks during an active call
+  const guardNav = useCallback((e) => {
+    if (inCall) {
+      e.preventDefault();
+    }
+  }, [inCall]);
 
   const tabs = [
     { to: '/', label: 'Home', icon: FiHome, end: true },
@@ -92,13 +102,14 @@ export default function Navbar({ userRole }) {
         </div>
 
         {/* Desktop: show all tabs */}
-        <div className="nav-tabs nav-tabs-desktop">
+        <div className={`nav-tabs nav-tabs-desktop${inCall ? ' nav-disabled' : ''}`}>
           {tabs.map((tab) => (
             <NavLink
               key={tab.to}
               to={tab.to}
               end={tab.end}
-              className={({ isActive }) => `nav-tab ${isActive ? 'active' : ''}`}
+              className={({ isActive }) => `nav-tab ${isActive ? 'active' : ''}${inCall ? ' disabled' : ''}`}
+              onClick={guardNav}
             >
               <tab.icon size={17} />
               <span>{tab.label}</span>
@@ -109,13 +120,14 @@ export default function Navbar({ userRole }) {
         </div>
 
         {/* Mobile: show only primary tabs + menu button */}
-        <div className="nav-tabs nav-tabs-mobile">
+        <div className={`nav-tabs nav-tabs-mobile${inCall ? ' nav-disabled' : ''}`}>
           {primaryTabs.map((tab) => (
             <NavLink
               key={tab.to}
               to={tab.to}
               end={tab.end}
-              className={({ isActive }) => `nav-tab ${isActive ? 'active' : ''}`}
+              className={({ isActive }) => `nav-tab ${isActive ? 'active' : ''}${inCall ? ' disabled' : ''}`}
+              onClick={guardNav}
             >
               <tab.icon size={17} />
               <span>{tab.label}</span>
@@ -149,8 +161,8 @@ export default function Navbar({ userRole }) {
                   key={tab.to}
                   to={tab.to}
                   end={tab.end}
-                  className={({ isActive }) => `mobile-sidebar-tab ${isActive ? 'active' : ''}`}
-                  onClick={closeSidebar}
+                  className={({ isActive }) => `mobile-sidebar-tab ${isActive ? 'active' : ''}${inCall ? ' disabled' : ''}`}
+                  onClick={inCall ? guardNav : closeSidebar}
                 >
                   <tab.icon size={18} />
                   <span>{tab.label}</span>

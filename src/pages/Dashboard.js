@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useCall } from '../contexts/CallContext';
 import { DashboardProvider } from '../contexts/DashboardContext';
 import Navbar from '../components/Navbar';
 import {
@@ -24,10 +25,12 @@ const ROUTE_TITLES = {
 
 export default function Dashboard() {
   const { user, logout } = useAuth();
+  const { callState } = useCall();
   const location = useLocation();
   const navigate = useNavigate();
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const profileMenuRef = useRef(null);
+  const inCall = callState === 'active' || callState === 'calling' || callState === 'incoming' || callState === 'reconnecting';
 
   const pageTitle = ROUTE_TITLES[location.pathname] || 'Dashboard';
 
@@ -41,6 +44,18 @@ export default function Dashboard() {
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
   }, []);
+
+  // Block browser back/forward during an active call
+  useEffect(() => {
+    if (!inCall) return;
+    const handlePopState = () => {
+      // Push current state back so the URL doesn't change
+      window.history.pushState(null, '', window.location.href);
+    };
+    window.history.pushState(null, '', window.location.href);
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [inCall]);
 
   return (
     <DashboardProvider>
@@ -82,12 +97,15 @@ export default function Dashboard() {
                   <div className="profile-dropdown-divider" />
                   <button
                     className="profile-dropdown-item"
-                    onClick={() => { navigate('/profile'); setShowProfileMenu(false); }}
+                    onClick={() => {
+                      if (!inCall) { navigate('/profile'); setShowProfileMenu(false); }
+                    }}
+                    disabled={inCall}
                   >
                     <FiSettings size={15} /> Profile Settings
                   </button>
                   <div className="profile-dropdown-divider" />
-                  <button className="profile-dropdown-item danger" onClick={logout}>
+                  <button className="profile-dropdown-item danger" onClick={inCall ? undefined : logout} disabled={inCall}>
                     <FiLogOut size={15} /> Log Out
                   </button>
                 </div>

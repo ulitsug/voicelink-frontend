@@ -74,7 +74,8 @@ export class WebRTCService {
     // Reconnection state
     this._disconnectTimeout = null;
     this._iceRestartAttempts = 0;
-    this._maxIceRestarts = 3;
+    this._maxIceRestarts = 15;
+    this._totalReconnectDeadline = null; // absolute timestamp for 120s hard limit
     this.onIceRestart = null; // callback to signal ice restart offer
   }
 
@@ -157,29 +158,51 @@ export class WebRTCService {
       console.log('[WebRTC] Connection state:', state);
 
       if (state === 'connected') {
-        // Connection recovered — clear any pending disconnect timeout
+        // Connection recovered — clear any pending disconnect timeout and reset attempt counters
         this._iceRestartAttempts = 0;
+        this._totalReconnectDeadline = null;
         if (this._disconnectTimeout) {
           clearTimeout(this._disconnectTimeout);
           this._disconnectTimeout = null;
         }
       } else if (state === 'disconnected') {
-        // Grace period before treating as failed — WebRTC may auto-recover
+        // Start reconnection grace period — exponential backoff ICE restarts
+        // within 120-second hard limit
+        if (!this._totalReconnectDeadline) {
+          this._totalReconnectDeadline = Date.now() + 120000;
+        }
         if (!this._disconnectTimeout) {
+          const delay = Math.min(3000 * Math.pow(1.5, this._iceRestartAttempts), 15000);
           this._disconnectTimeout = setTimeout(() => {
             this._disconnectTimeout = null;
-            if (this.peerConnection?.connectionState === 'disconnected') {
-              console.log('[WebRTC] Still disconnected after grace period, attempting ICE restart');
-              this._attemptIceRestart();
+            if (this.peerConnection?.connectionState === 'disconnected' ||
+                this.peerConnection?.connectionState === 'failed') {
+              if (Date.now() < this._totalReconnectDeadline) {
+                console.log('[WebRTC] Still disconnected, attempting ICE restart');
+                this._attemptIceRestart();
+              } else {
+                console.warn('[WebRTC] 120s reconnection deadline exceeded');
+                if (this.onConnectionStateChange) {
+                  this.onConnectionStateChange('failed');
+                }
+              }
             }
-          }, 5000);
+          }, delay);
         }
       } else if (state === 'failed') {
         if (this._disconnectTimeout) {
           clearTimeout(this._disconnectTimeout);
           this._disconnectTimeout = null;
         }
-        this._attemptIceRestart();
+        // Check 120-second hard limit — only truly fail if exceeded
+        if (!this._totalReconnectDeadline) {
+          this._totalReconnectDeadline = Date.now() + 120000;
+        }
+        if (Date.now() < this._totalReconnectDeadline) {
+          this._attemptIceRestart();
+        } else {
+          console.warn('[WebRTC] 120s reconnection deadline exceeded on failure');
+        }
       }
 
       if (this.onConnectionStateChange) {
@@ -299,6 +322,16 @@ export class WebRTCService {
 
   async _attemptIceRestart() {
     if (!this.peerConnection) return;
+
+    // Hard 120-second limit
+    if (this._totalReconnectDeadline && Date.now() >= this._totalReconnectDeadline) {
+      console.warn('[WebRTC] 120s reconnection deadline exceeded, giving up');
+      if (this.onConnectionStateChange) {
+        this.onConnectionStateChange('failed');
+      }
+      return;
+    }
+
     if (this._iceRestartAttempts >= this._maxIceRestarts) {
       console.warn('[WebRTC] Max ICE restart attempts reached, giving up');
       if (this.onConnectionStateChange) {
@@ -319,8 +352,24 @@ export class WebRTCService {
       } else if (this.onNegotiationNeeded) {
         this.onNegotiationNeeded();
       }
+
+      // Schedule next attempt with exponential backoff if still not connected
+      const delay = Math.min(3000 * Math.pow(1.5, this._iceRestartAttempts), 15000);
+      this._disconnectTimeout = setTimeout(() => {
+        this._disconnectTimeout = null;
+        const currentState = this.peerConnection?.connectionState;
+        if (currentState === 'disconnected' || currentState === 'failed') {
+          this._attemptIceRestart();
+        }
+      }, delay);
     } catch (e) {
       console.error('ICE restart failed:', e);
+      // Retry after a delay even on error
+      const delay = Math.min(5000 * Math.pow(1.5, this._iceRestartAttempts), 15000);
+      this._disconnectTimeout = setTimeout(() => {
+        this._disconnectTimeout = null;
+        this._attemptIceRestart();
+      }, delay);
     }
   }
 
@@ -618,6 +667,8 @@ export class WebRTCService {
       clearTimeout(this._disconnectTimeout);
       this._disconnectTimeout = null;
     }
+    this._totalReconnectDeadline = null;
+    this._iceRestartAttempts = 0;
 
     if (this.screenStream) {
       this.screenStream.getTracks().forEach((track) => track.stop());

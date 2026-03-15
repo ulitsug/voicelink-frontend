@@ -14,7 +14,7 @@ export default function CallOverlay() {
   const {
     callState, callType, remoteUser, isMuted, isVideoOn, isScreenSharing,
     callDuration, localStream, remoteStream, connectionQuality, callError,
-    remoteMediaState, isReconnecting,
+    remoteMediaState, isReconnecting, reconnectCountdown,
     acceptCall, rejectCall, endCall, toggleMute, toggleVideo, toggleScreenShare,
     cleanup,
   } = useCall();
@@ -95,7 +95,9 @@ export default function CallOverlay() {
         {isReconnecting && callState === 'active' && (
           <div className="call-reconnecting-banner">
             <FiWifiOff size={16} />
-            <span>Reconnecting...</span>
+            <span>
+              Reconnecting...{reconnectCountdown > 0 && ` (${reconnectCountdown}s)`}
+            </span>
           </div>
         )}
 
