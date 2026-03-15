@@ -410,6 +410,22 @@ export function CallProvider({ children }) {
       reconnectDeadlineRef.current = null;
     };
 
+    // Callee receives session_id after call is accepted (for resilience)
+    const onCallSessionCreated = (data) => {
+      if (data.session_id) {
+        sessionIdRef.current = data.session_id;
+        try {
+          sessionStorage.setItem('voicelink_call_session', JSON.stringify({
+            sessionId: data.session_id,
+            partnerId: data.partner_id,
+            callType: data.call_type,
+            callId: data.call_id || callIdRef.current,
+            startedAt: Date.now(),
+          }));
+        } catch {}
+      }
+    };
+
     // Session restore after our own reconnection
     const onCallSessionRestore = async (data) => {
       console.log('[CALL] Session restore received:', data);
@@ -502,6 +518,7 @@ export function CallProvider({ children }) {
     socket.on('call_reconnected', onCallReconnected);
     socket.on('call_peer_disconnected', onCallPeerDisconnected);
     socket.on('call_peer_reconnected', onCallPeerReconnected);
+    socket.on('call_session_created', onCallSessionCreated);
     socket.on('call_session_restore', onCallSessionRestore);
     socket.on('call_rejoin_offer', onCallRejoinOffer);
     socket.on('call_rejoin_answer', onCallRejoinAnswer);
@@ -586,6 +603,7 @@ export function CallProvider({ children }) {
       socket.off('call_reconnected', onCallReconnected);
       socket.off('call_peer_disconnected', onCallPeerDisconnected);
       socket.off('call_peer_reconnected', onCallPeerReconnected);
+      socket.off('call_session_created', onCallSessionCreated);
       socket.off('call_session_restore', onCallSessionRestore);
       socket.off('call_rejoin_offer', onCallRejoinOffer);
       socket.off('call_rejoin_answer', onCallRejoinAnswer);
